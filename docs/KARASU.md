@@ -12,8 +12,10 @@ is the wrong shape for Karasu: the authoritative ban is an account ban on the
 platform, it has to outlive the container the match ran in, and it has to be
 appealable. So this fork does three things instead:
 
-1. Classifies each of the 17 detectors into an enforcement tier.
-2. Requires corroboration before any statistical detector can produce a ban.
+1. Gives each of the 17 detectors a confidence reflecting how strong its firing bar is.
+2. Bans on one detection above a configurable confidence, and requires a repeat or a
+   corroborating detector below it — so every detector is bannable, but the weaker ones
+   have to earn it.
 3. Relays the detection to the platform, which makes the real decision.
 
 ```
@@ -49,12 +51,54 @@ The practical consequence: **auto-ban only works on a Karasu match server.** On 
 other server the detectors still run and still announce, but the relay is dropped and
 nothing is banned.
 
+## What decides a ban
+
+**Confidence, not tier.** Every detector has a fixed confidence in
+`src/karasu/karasu_policy.h` reflecting how strong its firing bar is, and three rules
+decide the recommendation:
+
+| Rule | Condition |
+|---|---|
+| `solo_confidence` | confidence ≥ `cs2ac_karasu_solo_ban_confidence` (default **55**) → bans on one detection |
+| `corroborated` | a second detector, different type **and** different family, each ≥ `cs2ac_karasu_min_confidence` (72) |
+| `repeat` | the same detector fires again, each time ≥ 85 |
+
+Each repeat fire adds +5 confidence (capped 99), so **every detector reaches a ban
+eventually** — NAMECHANGER, the weakest at 30, gets there on its sixth fire. Nothing is
+permanently alert-only.
+
+The confidences:
+
+```
+95 invalid input      93 desubticking, subtick spam   88 aimlock    86 silentaim
+84 antiaim            82 aimbot                       80 nulls, invalid cvar
+78 bhop, hyperscroll  76 autostrafe                   55 dll injection
+50 doubletap          45 inhuman accuracy, irregular behavior       30 namechanger
+```
+
+At the default of 55, everything down to and including DLL INJECTION bans on a single
+detection. Set the dial to 30 and every detector does; 76 and only aim/movement/protocol
+do; 90 and only the three that are structurally impossible for a real client do.
+
+> **The one to watch is DLL INJECTION.** It is the weakest detector that bans on its own
+> at the default, and it fires on any *one* of 118 client event subscriptions with no
+> accumulation and no latch — a list that includes `player_jump`, `door_open` and
+> `gc_connected`. A legitimate overlay, or a Valve client change, can trip it. Raising
+> `cs2ac_karasu_solo_ban_confidence` above 55 is the single change that stops it banning
+> anyone by itself, and it needs no rebuild.
+
+**Keep this in step with the platform.** `AnticheatAutoBanService.evaluateTierRules` in
+the Karasu monorepo implements the same three rules over its durable cross-session
+ledger, and it is the side that actually writes the ban. If you change a rule here and
+not there, the plugin will recommend a ban the platform then refuses.
+
 ## The tiers
 
-Set in `src/karasu/karasu_policy.h`. The tier is compiled in — there is no config key
-that promotes a detector, on purpose.
+Tier no longer gates enforcement. It sets the severity reported to the platform
+(A → `critical`, B → `high`, C → `medium`) and groups detectors into families so that two
+detectors measuring the same underlying thing cannot corroborate each other.
 
-### Tier A — one detection is enough
+### Tier A
 
 The client sent something a conformant client cannot produce.
 
@@ -69,11 +113,9 @@ about confidence: they are the strongest signals in the plugin. They are also th
 fragile — if Valve changes the usercmd or subtick encoding, all three start firing on
 honest players at once. That is what the platform's hourly circuit breaker is for.
 
-### Tier B — needs corroboration
+### Tier B
 
-Very unlikely for a human, but measured from behaviour. One of these alone never bans.
-It needs a second, still-live detection of a **different type** from a **different
-family**, each clearing `cs2ac_karasu_min_confidence`.
+Very unlikely for a human, but measured from behaviour.
 
 `AIMLOCK` · `SILENTAIM` · `ANTIAIM` · `AIMBOT` · `NULLS` · `INVALID CVAR` · `BHOP` ·
 `HYPERSCROLL` · `AUTOSTRAFE`
@@ -82,12 +124,13 @@ Families exist so that two detectors measuring the same underlying thing cannot
 corroborate each other — bhop and autostrafe are both movement, so tripping both is
 one unit, not two.
 
-### Tier C — never bans
+### Tier C
 
-Real evidence, unacceptable false-positive profile. Recorded and relayed for staff
-review; it can never contribute to a ban.
+Real evidence with a worse false-positive profile. These carry the lowest confidences,
+so at the default dial only DLL INJECTION (55) bans on its own; the rest need a repeat
+or a corroborating detector first.
 
-| Detector | Why it can never ban |
+| Detector | Why its confidence is low |
 |---|---|
 | `DLL INJECTION` | Fires on any one of 118 client event subscriptions, with no accumulation and no latch. The list includes `player_jump`, `door_open` and `gc_connected` — any legitimate overlay, or a Valve client change, would otherwise ban everyone who has it. Highest false-positive risk in the codebase. |
 | `DOUBLETAP` | Its incident counter has no time window, so three fire-pairs spread across a whole map still trip it. |
@@ -95,8 +138,8 @@ review; it can never contribute to a ban.
 | `IRREGULAR BEHAVIOR` | Airborne and no-scope kills are legitimate, if rare, human plays. |
 | `NAMECHANGER` | Detects annoyance, not cheating. Belongs in conduct moderation. |
 
-Note this is a **demotion** from upstream, where every one of these except
-`NAMECHANGER`'s siblings runs the permanent-ban command.
+Upstream runs its permanent-ban command for all of these on a single detection. Here
+they still ban, but the weaker ones have to earn it by repeating or being corroborated.
 
 ## Confidence
 
@@ -132,7 +175,8 @@ All keys live in `cfg/cs2ac.cfg`. None of them is a secret.
 | `cs2ac_karasu_relay_command` | `karasu_anticheat_report` | Command the Karasu plugin listens on. |
 | `cs2ac_karasu_enforce` | `2` | `0` report only · `1` kick on this server · `2` kick and ask for an account ban. |
 | `cs2ac_karasu_kick_command` | `kickid {userid} Karasu Anti-Cheat` | How a detected player is removed. |
-| `cs2ac_karasu_min_confidence` | `72` | Floor a Tier B detection must clear to corroborate. |
+| `cs2ac_karasu_solo_ban_confidence` | `55` | **The main dial.** Confidence at which one detection bans on its own. |
+| `cs2ac_karasu_min_confidence` | `72` | Floor a detection must clear to corroborate. |
 | `cs2ac_karasu_corroboration_window` | `1800` | Seconds a detection stays eligible to corroborate. |
 
 `cs2ac_punishment_command` and `cs2ac_kick_command` are set to `""`. When
@@ -216,10 +260,14 @@ Verified on a real CS2 dedicated server (Metamod:Source 2, `de_dust2`):
 - Builds clean under clang++, `-Wall -Werror`, C++17, via `./build-linux.sh`.
 - Loads: `meta list` shows `KarasuCSAC (1.0.2)`.
 - `cs2ac.cfg` parses, including every `cs2ac_karasu_*` key; `cs2ac_check_config` passes.
-- Tier policy is correct end to end — `INVALID INPUT` → tier A, confidence 95, rule
-  `tier_a_single`, recommends **ban**; `AIMLOCK` → tier B, confidence 88, rule
-  `awaiting_corroboration`, recommends **alert** (so a single Tier B detection does not
-  ban); `DLL INJECTION` and `INHUMAN ACCURACY` → tier C, rule `tier_c_alert_only`.
+- The policy is correct end to end, observed via `cs2ac_karasu_test_report`:
+  `INVALID INPUT` (95), `AIMLOCK` (88), `SILENTAIM` (86) and `DLL INJECTION` (55) all
+  reach rule `solo_confidence` and recommend **ban** at the default dial of 55, while
+  `DOUBLETAP` (50) and `NAMECHANGER` (30) sit at `below_threshold` and recommend
+  **alert** on a first fire.
+- Repeat escalation works: firing `NAMECHANGER` six times walked its confidence
+  30 → 35 → 40 → 45 → 50 → 55 and flipped the recommendation to **ban** on the sixth,
+  which is the proof that no detector is permanently alert-only.
 - The relay emits, the JSON parses, `confidence` is a number, the idempotency key is 24
   hex and increments on a stable per-boot nonce, and the length budget trims evidence
   rather than dropping the report.
