@@ -26,6 +26,8 @@ namespace
 	std::uint64_t emitted {};
 	std::uint64_t dropped {};
 	std::uint64_t truncated {};
+	std::string lastPayload;
+	std::size_t lastEncodedSize {};
 
 	std::string JsonEscape(std::string_view value)
 	{
@@ -251,6 +253,16 @@ std::uint64_t karasu::relay::TruncatedCount()
 	return truncated;
 }
 
+const std::string &karasu::relay::LastPayload()
+{
+	return lastPayload;
+}
+
+std::size_t karasu::relay::LastEncodedSize()
+{
+	return lastEncodedSize;
+}
+
 bool karasu::relay::Emit(const RelayReport &report)
 {
 	if (!settings::IsKarasuRelayEnabled())
@@ -324,9 +336,13 @@ bool karasu::relay::Emit(const RelayReport &report)
 		++truncated;
 	}
 
+	const std::string encoded = Base64Url(payload);
+	lastPayload = payload;
+	lastEncodedSize = encoded.size();
+
 	std::string line = command;
 	line += ' ';
-	line += Base64Url(payload);
+	line += encoded;
 	line += '\n';
 	interfaces::pEngine->ServerCommand(line.c_str());
 	++emitted;

@@ -1072,8 +1072,11 @@ void CS2ACPlugin::TestKarasuRelay(const char *detection)
 
 	if (karasu::relay::Emit(report))
 	{
-		Msg("[CS2AC] Relay sent. If the Karasu plugin is present it will log the decoded report; if not, the console will "
-			"report an unknown command, which is the expected result on a server without it.\n");
+		Msg("[CS2AC] Relay sent: %zu bytes of JSON, %zu encoded, %d allowed per console command.\n", karasu::relay::LastPayload().size(),
+			karasu::relay::LastEncodedSize(), CCommand::MaxCommandLength());
+		Msg("[CS2AC] Payload: %s\n", karasu::relay::LastPayload().c_str());
+		Msg("[CS2AC] If the Karasu plugin is present it will log the decoded report; if not, the console will report an "
+			"unknown command, which is the expected result on a server without it.\n");
 	}
 	else
 	{

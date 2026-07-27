@@ -68,5 +68,12 @@ namespace karasu
 		std::uint64_t EmittedCount();
 		std::uint64_t DroppedCount();
 		std::uint64_t TruncatedCount();
+
+		// The JSON of the most recent report, before base64. Kept so an operator can
+		// see exactly what was put on the wire without having to decode a console
+		// line by hand - the payload is length-budgeted and silently trims its
+		// evidence prose, so "what actually got sent" is a real question.
+		const std::string &LastPayload();
+		std::size_t LastEncodedSize();
 	} // namespace relay
 } // namespace karasu
