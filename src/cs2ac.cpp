@@ -715,7 +715,7 @@ CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detecti
 	const std::string playerName = SanitizeConsoleText(player->GetName());
 	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
 	karasu::Verdict verdict = karasuVerdicts[player->index].Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
-																settings::GetKarasuMinConfidence());
+																settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
 
 	// Whether the policy judged this player a cheater, decided before the relay
 	// recommendation is adjusted below.
@@ -1048,7 +1048,7 @@ void CS2ACPlugin::TestKarasuRelay(const char *detection)
 	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
 	karasu::PlayerVerdict scratch;
 	const karasu::Verdict verdict = scratch.Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
-												settings::GetKarasuMinConfidence());
+												 settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
 
 	karasu::RelayReport report;
 	report.steamId = 76561197960265728ull;
@@ -1170,8 +1170,8 @@ void CS2ACPlugin::PrintStatus() const
 									: karasuEnforce == 1 ? "kick on this server only"
 														 : "report only";
 	Msg("[CS2AC] Karasu: relay %s, enforcement %s.\n", settings::IsKarasuRelayEnabled() ? "on" : "off", karasuEnforceText);
-	Msg("[CS2AC] Karasu policy: Tier B needs confidence %d, corroboration window %d seconds.\n", settings::GetKarasuMinConfidence(),
-		settings::GetKarasuCorroborationWindow());
+	Msg("[CS2AC] Karasu policy: bans alone at confidence %d, corroborates at %d, window %d seconds.\n",
+		settings::GetKarasuSoloBanConfidence(), settings::GetKarasuMinConfidence(), settings::GetKarasuCorroborationWindow());
 	Msg("[CS2AC] Karasu relay: %llu sent, %llu dropped, %llu truncated.\n", static_cast<unsigned long long>(karasu::relay::EmittedCount()),
 		static_cast<unsigned long long>(karasu::relay::DroppedCount()), static_cast<unsigned long long>(karasu::relay::TruncatedCount()));
 	const size_t webhookQueueSize = webhook ? webhook->QueueSize() : 0;

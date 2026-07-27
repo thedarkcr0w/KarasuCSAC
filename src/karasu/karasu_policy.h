@@ -9,15 +9,15 @@
 // (a renamed literal must not silently change ban behaviour) and it needs a middle
 // tier for detectors that are strong evidence but not proof on their own.
 //
-// Tier A - the client sent something a conformant client cannot produce. One
-//          detection is enough.
-// Tier B - very unlikely for a human, but measured from behaviour. Needs a second,
-//          independent detection from a different family before it bans.
-// Tier C - real evidence, unacceptable false-positive profile. Never bans, at all,
-//          regardless of configuration. Recorded for staff review only.
+// Tier A - the client sent something a conformant client cannot produce.
+// Tier B - very unlikely for a human, but measured from behaviour.
+// Tier C - real evidence with a worse false-positive profile.
 //
-// The tier is a floor, not a suggestion: Tier C membership is compiled in and an
-// operator cannot promote a Tier C detector from cs2ac.cfg.
+// The tier feeds the severity reported to the platform and the family grouping used
+// for corroboration. What actually decides a ban is the CONFIDENCE below, against
+// cs2ac_karasu_solo_ban_confidence - so every detector is bannable and the operator
+// sets how much evidence a ban takes. A detector below the solo threshold still bans
+// once a second, independent detector corroborates it, or once it fires again.
 
 #include "../settings.h"
 
@@ -120,12 +120,14 @@ namespace karasu
 			case DetectionType::Autostrafe:
 				return {Tier::B, Family::Movement, 76};
 
-			// --- Tier C: never bans, compiled in ------------------------------------
+			// --- Tier C: weaker evidence, lowest confidence -------------------------
 			// Fires on ANY ONE of 118 hardcoded client event subscriptions with zero
 			// accumulation and no latch - and that list includes player_jump,
-			// door_open and gc_connected. Any legitimate overlay, or a Valve client
-			// change, would otherwise ban everyone who has it. Highest false-positive
-			// risk in the codebase.
+			// door_open and gc_connected, so a legitimate overlay or a Valve client
+			// change can trip it. Highest false-positive risk in the codebase, and
+			// the reason 55 is the lowest confidence that bans on its own by default:
+			// raising cs2ac_karasu_solo_ban_confidence above 55 is the single change
+			// that stops this detector banning anyone by itself.
 			case DetectionType::DllInjection:
 				return {Tier::C, Family::Config, 55};
 			// The incident counter has no time window: three fire-pairs spread across
@@ -218,12 +220,21 @@ namespace karasu
 	// is not one of the known detectors.
 	bool ResolveDetectionType(const char *name, DetectionType &detection);
 
-	// A single Tier A detection is enough, but only when the detector is one of the
-	// structurally-impossible ones - hence the floor rather than a plain tier check.
-	inline constexpr int kTierAConfidenceFloor = 90;
-	// A Tier B detection has to clear this before it may act as a corroboration unit.
+	// Any detector whose confidence reaches this bans on a single detection, whatever
+	// its tier. This is the main dial (cs2ac_karasu_solo_ban_confidence).
+	//
+	// At the default of 55 that is every detector except DOUBLETAP (50),
+	// INHUMAN ACCURACY (45), IRREGULAR BEHAVIOR (45) and NAMECHANGER (30), which
+	// still need a second signal - either a different detector from a different
+	// family, or the same detector firing again.
+	//
+	// Lower it to 30 and literally every detector bans on its own; raise it to 76
+	// and only the aim/movement/protocol detectors do; raise it to 90 and only the
+	// three structurally-impossible ones do. Nothing here is compiled in.
+	inline constexpr int kDefaultSoloBanConfidence = 55;
+	// A detection has to clear this before it may act as a corroboration unit.
 	inline constexpr int kDefaultTierBConfidence = 72;
-	// A single Tier B type firing repeatedly may stand in for a second family, but
-	// only well above the corroboration floor.
+	// The same detector firing repeatedly may stand in for a second family, but only
+	// well above the corroboration floor.
 	inline constexpr int kRepeatConfidenceFloor = 85;
 } // namespace karasu

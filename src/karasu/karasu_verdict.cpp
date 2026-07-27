@@ -41,7 +41,8 @@ int karasu::PlayerVerdict::FiresFor(DetectionType detection) const
 	return slot < kSlots ? entries[slot].fires : 0;
 }
 
-karasu::Verdict karasu::PlayerVerdict::Feed(DetectionType detection, Clock::time_point now, int windowSeconds, int minConfidence)
+karasu::Verdict karasu::PlayerVerdict::Feed(DetectionType detection, Clock::time_point now, int windowSeconds, int minConfidence,
+											int soloBanConfidence)
 {
 	Verdict verdict;
 
@@ -71,38 +72,27 @@ karasu::Verdict karasu::PlayerVerdict::Feed(DetectionType detection, Clock::time
 
 	verdict.confidence = entry.confidence;
 
-	// Tier C never bans and never corroborates. It is recorded and relayed as
-	// evidence for staff review, and that is all it ever does. This is compiled in
-	// precisely because these are the detectors whose false-positive profile makes
-	// them unsafe to enforce on - see the notes in karasu_policy.h.
-	if (policy.tier == Tier::C)
-	{
-		verdict.rule = "tier_c_alert_only";
-		return verdict;
-	}
-
-	// R1 - a single structurally-impossible detection is enough.
-	if (policy.tier == Tier::A && entry.confidence >= kTierAConfidenceFloor)
+	// R1 - the detector is confident enough to stand on its own. Tier does not gate
+	// this; confidence does, and the threshold is an operator setting. Every
+	// detector can reach a ban, the strong ones just get there in one step.
+	if (entry.confidence >= soloBanConfidence)
 	{
 		verdict.action = Action::Ban;
-		verdict.rule = "tier_a_single";
+		verdict.rule = "solo_confidence";
 		verdict.corroboratingUnits = 1;
 		return verdict;
 	}
 
-	if (policy.tier != Tier::B)
-	{
-		verdict.rule = "below_threshold";
-		return verdict;
-	}
-
+	// Below the solo bar a detection still counts, it just needs a second signal.
 	if (entry.confidence < minConfidence)
 	{
 		verdict.rule = "below_threshold";
 		return verdict;
 	}
 
-	// R2 - a second, still-live Tier B detector from a different family.
+	// R2 - a second, still-live detector from a different family. Requiring a
+	// different family stops two detectors that measure the same underlying thing
+	// (bhop and autostrafe are both movement) from corroborating each other.
 	int units = 1;
 	for (std::size_t other = 0; other < kSlots; ++other)
 	{
@@ -116,7 +106,7 @@ karasu::Verdict karasu::PlayerVerdict::Feed(DetectionType detection, Clock::time
 			continue;
 		}
 		const DetectorPolicy otherPolicy = PolicyFor(static_cast<DetectionType>(other));
-		if (otherPolicy.tier != Tier::B || otherPolicy.family == policy.family)
+		if (otherPolicy.family == policy.family)
 		{
 			continue;
 		}
@@ -132,15 +122,15 @@ karasu::Verdict karasu::PlayerVerdict::Feed(DetectionType detection, Clock::time
 	if (units >= 2)
 	{
 		verdict.action = Action::Ban;
-		verdict.rule = "tier_b_corroborated";
+		verdict.rule = "corroborated";
 		return verdict;
 	}
 
-	// R3 - the same Tier B detector tripping more than once, well above the floor.
+	// R3 - the same detector tripping more than once, well above the floor.
 	if (entry.fires >= 2 && entry.confidence >= kRepeatConfidenceFloor)
 	{
 		verdict.action = Action::Ban;
-		verdict.rule = "tier_b_repeat";
+		verdict.rule = "repeat";
 		return verdict;
 	}
 

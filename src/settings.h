@@ -55,8 +55,10 @@ namespace settings
 	// 0 = report only, 1 = kick locally, 2 = kick and ask the platform to ban.
 	int GetKarasuEnforceLevel();
 	const char *GetKarasuKickCommand();
-	// Floor a Tier B detection must clear to count toward corroboration, 0-100.
+	// Floor a detection must clear to count toward corroboration, 0-100.
 	int GetKarasuMinConfidence();
+	// Confidence at which a single detection bans on its own, 0-100.
+	int GetKarasuSoloBanConfidence();
 	// How long, in seconds, a detection stays eligible to corroborate another.
 	int GetKarasuCorroborationWindow();
 

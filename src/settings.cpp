@@ -21,6 +21,8 @@ namespace
 	// whenever a value in cs2ac.cfg does not parse.
 	constexpr int karasuDefaultMinConfidence = 72;
 	constexpr int karasuDefaultCorroborationWindow = 1800;
+	// Keep in step with karasu::kDefaultSoloBanConfidence in src/karasu/karasu_policy.h.
+	constexpr int karasuDefaultSoloBanConfidence = 55;
 
 	std::vector<std::uint64_t> &WhitelistedSteamIds()
 	{
@@ -122,8 +124,10 @@ namespace
 											   "Command used to remove a player the Karasu policy has judged a cheater",
 											   CUtlString("kickid {userid} Karasu Anti-Cheat")};
 		CConVar<CUtlString> karasuMinConfidence {"cs2ac_karasu_min_confidence", FCVAR_NONE,
-												 "Confidence a Tier B detection must reach to count toward corroboration (0-100)",
-												 CUtlString("72")};
+												 "Confidence a detection must reach to count toward corroboration (0-100)", CUtlString("72")};
+		CConVar<CUtlString> karasuSoloBanConfidence {"cs2ac_karasu_solo_ban_confidence", FCVAR_NONE,
+													 "Confidence at which one detection is enough to ban on its own (0-100)",
+													 CUtlString("55")};
 		CConVar<CUtlString> karasuCorroborationWindow {"cs2ac_karasu_corroboration_window", FCVAR_NONE,
 													   "Seconds a detection stays eligible to corroborate another one", CUtlString("1800")};
 	};
@@ -367,6 +371,15 @@ int settings::GetKarasuMinConfidence()
 		return karasuDefaultMinConfidence;
 	}
 	return ParseBoundedInt(configuration->karasuMinConfidence.Get().Get(), karasuDefaultMinConfidence, 0, 100);
+}
+
+int settings::GetKarasuSoloBanConfidence()
+{
+	if (!configuration)
+	{
+		return karasuDefaultSoloBanConfidence;
+	}
+	return ParseBoundedInt(configuration->karasuSoloBanConfidence.Get().Get(), karasuDefaultSoloBanConfidence, 0, 100);
 }
 
 int settings::GetKarasuCorroborationWindow()

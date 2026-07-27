@@ -47,9 +47,10 @@ namespace karasu
 		// Records one detection and returns the resulting recommendation.
 		//
 		// windowSeconds bounds how long a detection stays eligible to corroborate
-		// another one. minConfidence is the floor a Tier B detection must clear to
-		// count as a corroboration unit.
-		Verdict Feed(DetectionType detection, Clock::time_point now, int windowSeconds, int minConfidence);
+		// another one. minConfidence is the floor a detection must clear to count as
+		// a corroboration unit. soloBanConfidence is the confidence at which a single
+		// detection is enough on its own, whatever its tier.
+		Verdict Feed(DetectionType detection, Clock::time_point now, int windowSeconds, int minConfidence, int soloBanConfidence);
 
 		// Effective confidence currently recorded for a detector, 0 when unseen.
 		int ConfidenceFor(DetectionType detection) const;
