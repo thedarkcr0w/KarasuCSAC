@@ -30,6 +30,13 @@ namespace
 	// names shown here and the enforcement tier keyed on DetectionType cannot drift
 	// apart. See karasu::DetectionDisplayName.
 
+	// Ledger used only by cs2ac_karasu_test_report. It persists between invocations
+	// so repeated calls exercise the real accumulation - a detector below the solo
+	// bar climbs +5 per repeat fire, and detectors from different families
+	// corroborate each other - exactly as a live player's ledger would.
+	// "cs2ac_karasu_test_report reset" clears it. Never touched by real detections.
+	karasu::PlayerVerdict karasuTestLedger;
+
 	void HandleDetectionCallback(const char *detection, MovementPlayer *player, std::string_view evidence)
 	{
 		g_CS2AC.HandleDetection(detection, player, evidence);
@@ -1031,10 +1038,17 @@ void CS2ACPlugin::TestAnnouncement() const
 
 void CS2ACPlugin::TestKarasuRelay(const char *detection)
 {
+	if (detection && CS2AC_STREQI(detection, "reset"))
+	{
+		karasuTestLedger.Reset();
+		Msg("[CS2AC] Karasu test ledger cleared.\n");
+		return;
+	}
+
 	DetectionType type = DetectionType::Count;
 	if (!karasu::ResolveDetectionType(detection, type))
 	{
-		Msg("[CS2AC] '%s' is not a detection name. Try one of: %s.\n", detection ? detection : "",
+		Msg("[CS2AC] '%s' is not a detection name, and not 'reset'. Try one of: %s.\n", detection ? detection : "",
 			karasu::DetectionDisplayName(DetectionType::Aimlock));
 		return;
 	}
@@ -1046,9 +1060,8 @@ void CS2ACPlugin::TestKarasuRelay(const char *detection)
 	// the corroboration ledger, the JSON writer, the base64url encoder, the length
 	// budget and the console emit — everything except a genuine detector firing.
 	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
-	karasu::PlayerVerdict scratch;
-	const karasu::Verdict verdict = scratch.Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
-												 settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
+	const karasu::Verdict verdict = karasuTestLedger.Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
+														  settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
 
 	karasu::RelayReport report;
 	report.steamId = 76561197960265728ull;
