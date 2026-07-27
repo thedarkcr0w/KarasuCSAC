@@ -312,6 +312,7 @@ namespace detection
 		std::deque<AntiAimCommand> commands;
 		Clock::time_point scoreTime;
 		float score {};
+		float mismatchScore {};
 		std::array<float, 3> spinSeconds;
 		std::array<float, 3> spinBreakSeconds;
 		float jitterSeconds {};
@@ -345,7 +346,7 @@ namespace detection
 		void OnClientDisconnect(MovementPlayer *player);
 
 	private:
-		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous);
+		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous, bool mismatch = false);
 		void ApplyDecay(MovementPlayer *player, AntiAimPlayerData &data);
 		void EvaluateMotion(MovementPlayer *player, AntiAimPlayerData &data, AntiAimCommand &command);
 		void EvaluatePendingShot(MovementPlayer *player, AntiAimPlayerData &data, int currentTick);

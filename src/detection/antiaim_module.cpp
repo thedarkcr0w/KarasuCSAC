@@ -35,11 +35,12 @@ namespace
 	constexpr float jitterTolerance = 0.25f;
 	constexpr float minimumJitterSpan = 10.0f;
 	constexpr float requiredJitterSeconds = 10.0f;
-	constexpr float commandYawMismatchAngle = 90.0f;
+	constexpr float commandYawMismatchAngle = 120.0f;
 	constexpr float minimumAttackReturnAngle = 30.0f;
 	constexpr int commandMismatchSpacing = 4;
 	constexpr float detectionThreshold = 100.0f;
 	constexpr float scoreDecayPerSecond = 2.0f;
+	constexpr float mismatchScoreDecayPerSecond = 5.0f;
 
 	enum CommandProblem : std::uint32_t
 	{
@@ -113,38 +114,44 @@ namespace detection
 		}
 		float elapsed = std::chrono::duration<float>(now - data.scoreTime).count();
 		data.scoreTime = now;
-		if (elapsed <= 0.0f || data.score <= 0.0f)
+		if (elapsed <= 0.0f || (data.score <= 0.0f && data.mismatchScore <= 0.0f))
 		{
 			return;
 		}
-		int before = static_cast<int>(std::ceil(data.score - 0.0001f));
+		int before = static_cast<int>(std::ceil(data.score + data.mismatchScore - 0.0001f));
 		data.score = (std::max)(0.0f, data.score - elapsed * scoreDecayPerSecond);
-		int after = static_cast<int>(std::ceil(data.score - 0.0001f));
+		data.mismatchScore = (std::max)(0.0f, data.mismatchScore - elapsed * mismatchScoreDecayPerSecond);
+		const float total = data.score + data.mismatchScore;
+		int after = static_cast<int>(std::ceil(total - 0.0001f));
 		if (player && after < before)
 		{
-			ANTIAIM_DEBUG("%s score decayed to %.1f/%.0f.\n", player->GetName(), data.score, detectionThreshold);
+			ANTIAIM_DEBUG("%s score decayed to %.1f/%.0f (regular %.1f, mismatch %.1f).\n", player->GetName(), total, detectionThreshold, data.score,
+						  data.mismatchScore);
 		}
 	}
 
-	void AntiAimModule::AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous)
+	void AntiAimModule::AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous, bool mismatch)
 	{
 		if (!player || data.suppressContinuous)
 		{
 			return;
 		}
 		ApplyDecay(player, data);
-		data.score += weight;
-		ANTIAIM_DEBUG("%s added %.1f for %s; score %.1f/%.0f.\n", player->GetName(), weight, reason, data.score, detectionThreshold);
-		if (data.score < detectionThreshold)
+		(mismatch ? data.mismatchScore : data.score) += weight;
+		const float total = data.score + data.mismatchScore;
+		ANTIAIM_DEBUG("%s added %.1f for %s; score %.1f/%.0f (regular %.1f, mismatch %.1f).\n", player->GetName(), weight, reason, total,
+					  detectionThreshold, data.score, data.mismatchScore);
+		if (total < detectionThreshold)
 		{
 			return;
 		}
 		if (announce)
 		{
 			announce("ANTIAIM", player,
-					 tfm::format("%s added %.1f points and reached %.1f/%.0f evidence.", reason, weight, data.score, detectionThreshold));
+					 tfm::format("%s added %.1f points and reached %.1f/%.0f evidence.", reason, weight, total, detectionThreshold));
 		}
 		data.score = 0.0f;
+		data.mismatchScore = 0.0f;
 		data.scoreTime = std::chrono::steady_clock::now();
 		data.suppressContinuous = continuous;
 		ANTIAIM_DEBUG("%s reached the threshold; evidence was cleared%s.\n", player->GetName(),
@@ -563,7 +570,8 @@ namespace detection
 			data.lastMismatchEvidenceCommand = found->commandNumber;
 			ANTIAIM_DEBUG("%s command %d base/input-history yaw mismatch is %.2f degrees.\n", player->GetName(), found->commandNumber,
 						  found->historyYawDifference);
-			AddEvidence(player, data, 1.0f, "a repeated base and input-history mismatch", true);
+			// Fast legitimate mouse movement can create this difference, so it contributes only short-lived supporting evidence.
+			AddEvidence(player, data, 1.0f, "a repeated base and input-history mismatch", true, true);
 		}
 		else if (!data.inconsistencyActive && wasInconsistent)
 		{
