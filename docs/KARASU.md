@@ -180,17 +180,59 @@ in the Karasu monorepo:
 Bans are **temporary and flagged for review**, not permanent. A permanent ban stays a
 human decision.
 
+## The relay fits in 511 bytes, and that is the binding constraint
+
+`IVEngineServer2::ServerCommand` queues a string that the engine later tokenises into a
+`CCommand`, and `CCommand::MaxCommandLength()` is **511** (`COMMAND_MAX_LENGTH = 512`,
+minus one, in `hl2sdk-cs2/public/tier1/convar.h`). Base64 costs 4/3. After the
+`karasu_anticheat_report ` prefix that leaves roughly **350 bytes of JSON**.
+
+That is not much, so the payload carries only what the platform cannot reconstruct:
+
+```jsonc
+{"steamId":"…","detectionType":"cs2ac:AIMLOCK","severity":"high","detectorTier":"B",
+ "detectorFamily":"aim","confidence":88,"recommendedAction":"alert","action":"alert",
+ "identitySource":"unauthenticated","idempotencyKey":"…","evidence":"…"}
+```
+
+Deliberately not sent: `source` and `pluginVersion` (the C# relay substitutes both when
+absent), `playerName` and `userid` (it resolves the player from `steamId`),
+`deterministic` (implied by tier A), and `rule` / `corroboratingUnits` /
+`corroboratingType` / `serverTick` (diagnostics — the platform re-derives its own verdict
+from its durable ledger and wins anyway).
+
+`evidence` is the flexible field and gets trimmed to fit. **If you ever add a field here,
+take the budget out of the evidence prose, not out of the others** — and check
+`cs2ac_karasu_test_report`, which prints the JSON with its encoded size against the cap.
+
+This was found the hard way: the first version of the payload was ~450 bytes with the
+evidence already emptied, so the length guard dropped **100 % of reports** and auto-ban
+would have been silently dead in production. The drop path now prints the actual sizes.
+
+## What has been verified, and what has not
+
+Verified on a real CS2 dedicated server (Metamod:Source 2, `de_dust2`):
+
+- Builds clean under clang++, `-Wall -Werror`, C++17, via `./build-linux.sh`.
+- Loads: `meta list` shows `KarasuCSAC (1.0.2)`.
+- `cs2ac.cfg` parses, including every `cs2ac_karasu_*` key; `cs2ac_check_config` passes.
+- Tier policy is correct end to end — `INVALID INPUT` → tier A, confidence 95, rule
+  `tier_a_single`, recommends **ban**; `AIMLOCK` → tier B, confidence 88, rule
+  `awaiting_corroboration`, recommends **alert** (so a single Tier B detection does not
+  ban); `DLL INJECTION` and `INHUMAN ACCURACY` → tier C, rule `tier_c_alert_only`.
+- The relay emits, the JSON parses, `confidence` is a number, the idempotency key is 24
+  hex and increments on a stable per-boot nonce, and the length budget trims evidence
+  rather than dropping the report.
+
+**Not verified: a genuine detector firing.** Most detectors read `ProcessUsercmds`, which
+only runs for a real network client — bots use a different path. So the seam between a
+detector firing and `EvaluateKarasuPolicy` is reasoned about, not observed, and no
+end-to-end ban has been issued from a real detection. That needs a human connecting to a
+server running both this and the Karasu CS2 plugin.
+
 ## Known gaps
 
 Be aware of these before trusting it completely.
-
-- **No detector has fired through this code path yet.** The plugin builds clean
-  (clang++, `-Wall -Werror`, C++17) and loads on a real CS2 dedicated server, and
-  `cs2ac_karasu_test_report` exercises the policy lookup, corroboration ledger, JSON
-  writer, base64url encoder, length budget and console emit. But a *genuine* detection
-  needs a real client connected and playing — bots do not drive `ProcessUsercmds`, which
-  is where most detectors get their input. Until that happens, the seam between a
-  detector firing and `EvaluateKarasuPolicy` is reasoned about, not observed.
 - **Confidence is per-detector, not per-event** (see above). Threading real evidence
   values out of the nine detector modules is the obvious next improvement.
 - **The relay is fire-and-forget.** There is no acknowledgement from the Karasu plugin,
