@@ -3,9 +3,6 @@
 #include "../common.h"
 #include "../settings.h"
 #include "../utils/interfaces.h"
-// Generated into the build's versioning/ directory at configure time, so this
-// resolves through the include path rather than relative to this file.
-#include "version_gen.h"
 
 #include "convar.h"
 #include "eiface.h"
@@ -17,9 +14,12 @@ namespace
 	constexpr std::string_view kBase64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 	// Evidence prose is the only unbounded field in the payload, so it is the first
-	// thing sacrificed when the console command length cap is in danger.
-	constexpr std::size_t kEvidenceBudget = 720;
-	constexpr std::size_t kEvidenceMinimum = 120;
+	// thing sacrificed when the console command length cap is in danger. The engine
+	// allows 511 bytes per command and base64 costs 4/3, so the whole JSON has to
+	// fit in roughly 350 bytes — the fixed fields take most of that, which is why
+	// the starting budget here is small rather than generous.
+	constexpr std::size_t kEvidenceBudget = 128;
+	constexpr std::size_t kEvidenceMinimum = 16;
 
 	std::uint64_t sequence {};
 	std::uint64_t bootNonce {};
@@ -122,6 +122,13 @@ namespace
 		return buffer;
 	}
 
+	std::string Hex32(std::uint64_t value)
+	{
+		char buffer[9] {};
+		V_snprintf(buffer, sizeof(buffer), "%08llx", static_cast<unsigned long long>(value) & 0xFFFFFFFFull);
+		return buffer;
+	}
+
 	// Stable within a boot, unique across boots. Combined with the sequence number
 	// this gives the platform an idempotency key, so a relay that gets re-sent
 	// cannot produce a second ban.
@@ -160,16 +167,28 @@ namespace
 
 		const karasu::Verdict &verdict = report.verdict;
 
+		// The whole relay has to survive as ONE console command argument, and the
+		// engine caps a command at CCommand::MaxCommandLength() (511) — which base64
+		// inflation turns into roughly 350 usable bytes of JSON. So this carries only
+		// what the platform cannot reconstruct on its own.
+		//
+		// Deliberately NOT sent, and why it is safe to leave out:
+		//   source, pluginVersion  the C# relay already substitutes "karasu-cs2ac" and
+		//                          "karasucsac:unknown" when they are absent
+		//   playerName, userid     the relay resolves the player from steamId
+		//   deterministic          implied by tier A
+		//   rule, corroboratingUnits, corroboratingType, serverTick
+		//                          diagnostics; the platform re-derives its own verdict
+		//                          from its durable ledger anyway, and its decision wins
+		//
+		// Everything that remains is load-bearing for the ban decision. If a field ever
+		// has to be added here, take the budget out of the evidence prose, not out of
+		// these.
 		std::string payload;
-		payload.reserve(evidence.size() + 640);
-		payload += "{\"source\":\"karasu-cs2ac\"";
-		payload += ",\"pluginVersion\":\"karasucsac:";
-		payload += JsonEscape(PLUGIN_FULL_VERSION);
-		payload += "\",\"steamId\":\"";
+		payload.reserve(evidence.size() + 320);
+		payload += "{\"steamId\":\"";
 		payload += std::to_string(report.steamId);
-		payload += "\",\"userid\":";
-		payload += std::to_string(report.userId);
-		payload += ",\"detectionType\":\"cs2ac:";
+		payload += "\",\"detectionType\":\"cs2ac:";
 		payload += JsonEscape(report.detectionName);
 		payload += "\",\"severity\":\"";
 		payload += karasu::SeverityForTier(report.policy.tier);
@@ -179,8 +198,6 @@ namespace
 		payload += karasu::FamilyName(report.policy.family);
 		payload += "\",\"confidence\":";
 		payload += std::to_string(verdict.confidence);
-		payload += ",\"deterministic\":";
-		payload += report.policy.tier == karasu::Tier::A ? "true" : "false";
 		payload += ",\"recommendedAction\":\"";
 		payload += karasu::ActionName(verdict.action);
 		payload += "\",\"action\":\"";
@@ -189,20 +206,6 @@ namespace
 		payload += karasu::IdentitySourceName(report.identity);
 		payload += "\",\"idempotencyKey\":\"";
 		payload += eventId;
-		payload += "\",\"rule\":\"";
-		payload += verdict.rule;
-		payload += "\",\"corroboratingUnits\":";
-		payload += std::to_string(verdict.corroboratingUnits);
-		if (verdict.hasCorroboratingType)
-		{
-			payload += ",\"corroboratingType\":\"cs2ac:";
-			payload += JsonEscape(karasu::DetectionDisplayName(verdict.corroboratingType));
-			payload += "\"";
-		}
-		payload += ",\"serverTick\":";
-		payload += std::to_string(report.serverTick);
-		payload += ",\"playerName\":\"";
-		payload += JsonEscape(report.playerName);
 		payload += "\",\"evidence\":\"";
 		payload += evidence;
 		payload += "\"}";
@@ -270,7 +273,10 @@ bool karasu::relay::Emit(const RelayReport &report)
 	}
 
 	EnsureNonce();
-	const std::string eventId = Hex64(bootNonce) + Hex64(++sequence);
+	// 16 hex of per-boot nonce + 8 hex of sequence = 24 chars. Comfortably unique
+	// (the platform only needs it to dedupe a re-sent report) and 8 bytes shorter
+	// than a full 128-bit key, which is 8 more bytes of evidence prose that fits.
+	const std::string eventId = Hex64(bootNonce) + Hex32(++sequence);
 
 	// The engine drops a console command longer than its cap, and base64 inflates by
 	// 4/3, so the payload has to be measured before it is sent rather than after.
@@ -302,9 +308,14 @@ bool karasu::relay::Emit(const RelayReport &report)
 	}
 	if (payload.size() > maximumPayload)
 	{
+		// Should be unreachable: the fields that remain after dropping the evidence
+		// prose are a fixed set and fit with room to spare. If this ever fires, a
+		// field was added to the payload without taking the budget from somewhere,
+		// so print the numbers rather than just the fact.
 		++dropped;
-		Msg("[CS2AC] Karasu relay dropped a report for %s: the payload does not fit in one console command.\n",
-			report.playerName ? report.playerName : "<unknown>");
+		Msg("[CS2AC] Karasu relay DROPPED a report for %s: %zu bytes of payload exceeds the %zu that fit in one console "
+			"command (engine cap %zu, prefix %zu). This is a bug — the relay payload has outgrown its budget.\n",
+			report.playerName ? report.playerName : "<unknown>", payload.size(), maximumPayload, maximumLine, prefix);
 		return false;
 	}
 
