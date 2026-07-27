@@ -11,10 +11,11 @@
 >
 > What this fork changes, and nothing else:
 >
-> - Adds `src/karasu/` — a per-detector enforcement tier table, a corroboration
->   ledger, and a console relay that hands detections to the Karasu CS2 plugin.
-> - Classifies all 17 detectors into three tiers so that a single noisy heuristic
->   cannot ban a legitimate player. Five detectors can **never** produce a ban.
+> - Adds `src/karasu/` — a per-detector confidence table, a corroboration ledger, and a
+>   console relay that hands detections to the Karasu CS2 plugin.
+> - Replaces "which detections ban" with a single confidence dial
+>   (`cs2ac_karasu_solo_ban_confidence`). Every detector can ban, but the weaker ones
+>   have to repeat or be corroborated first, and one convar decides where that line sits.
 > - Replaces the admin-plugin punishment command with an engine `kickid`, because on
 >   Karasu the authoritative ban is the platform account ban, not a server-local one.
 > - Implements the previously-ignored `validated` argument of `Player::GetSteamId64`,
