@@ -272,6 +272,11 @@ CON_COMMAND(cs2ac_webhook_test, "Send a harmless Discord webhook test")
 	g_CS2AC.TestWebhook();
 }
 
+CON_COMMAND(cs2ac_karasu_test_report, "Emit one synthetic Karasu relay report to check the relay end to end")
+{
+	g_CS2AC.TestKarasuRelay(args.ArgC() > 1 ? args.Arg(1) : "AIMLOCK");
+}
+
 CON_COMMAND(cs2ac_config_loaded, "Confirm that cs2ac.cfg finished loading")
 {
 	(void)args;
@@ -878,6 +883,7 @@ void CS2ACPlugin::PrintHelp() const
 	Msg("[CS2AC] cs2ac_check_config - Check the current settings without changing them.\n");
 	Msg("[CS2AC] cs2ac_test_announcement - Show a harmless chat and center-screen test without punishing anyone.\n");
 	Msg("[CS2AC] cs2ac_webhook_test - Send a harmless Discord test report.\n");
+	Msg("[CS2AC] cs2ac_karasu_test_report [detection] - Emit one synthetic Karasu relay report to check the relay end to end.\n");
 }
 
 void CS2ACPlugin::ReloadConfig()
@@ -1021,6 +1027,58 @@ void CS2ACPlugin::TestAnnouncement() const
 {
 	Msg("[CS2AC] Running a harmless announcement test. No detection or punishment will be created.\n");
 	utils::AnnounceTest();
+}
+
+void CS2ACPlugin::TestKarasuRelay(const char *detection)
+{
+	DetectionType type = DetectionType::Count;
+	if (!karasu::ResolveDetectionType(detection, type))
+	{
+		Msg("[CS2AC] '%s' is not a detection name. Try one of: %s.\n", detection ? detection : "",
+			karasu::DetectionDisplayName(DetectionType::Aimlock));
+		return;
+	}
+
+	// Deliberately unauthenticated, with a SteamID64 that cannot belong to anybody
+	// (the account-number field is zero). The platform refuses to ban on an
+	// unauthenticated identity, so running this command can never punish a real
+	// player no matter how the relay is wired up. It exercises the policy lookup,
+	// the corroboration ledger, the JSON writer, the base64url encoder, the length
+	// budget and the console emit — everything except a genuine detector firing.
+	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
+	karasu::PlayerVerdict scratch;
+	const karasu::Verdict verdict = scratch.Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
+												settings::GetKarasuMinConfidence());
+
+	karasu::RelayReport report;
+	report.steamId = 76561197960265728ull;
+	report.userId = -1;
+	report.detectionName = karasu::DetectionDisplayName(type);
+	report.playerName = "cs2ac_karasu_test_report";
+	report.detection = type;
+	report.policy = policy;
+	report.verdict = verdict;
+	report.localAction = karasu::Action::Alert;
+	report.identity = karasu::IdentitySource::Unauthenticated;
+	report.evidence = "synthetic report produced by cs2ac_karasu_test_report; not a real detection";
+	if (auto *globals = g_pCS2ACUtils->GetServerGlobals())
+	{
+		report.serverTick = globals->tickcount;
+	}
+
+	Msg("[CS2AC] Karasu relay test: %s, tier %s, family %s, confidence %d, rule %s, recommendation %s.\n", report.detectionName,
+		karasu::TierName(policy.tier), karasu::FamilyName(policy.family), verdict.confidence, verdict.rule,
+		karasu::ActionName(verdict.action));
+
+	if (karasu::relay::Emit(report))
+	{
+		Msg("[CS2AC] Relay sent. If the Karasu plugin is present it will log the decoded report; if not, the console will "
+			"report an unknown command, which is the expected result on a server without it.\n");
+	}
+	else
+	{
+		Msg("[CS2AC] Relay was NOT sent. Check cs2ac_karasu_relay and cs2ac_karasu_relay_command in cs2ac.cfg.\n");
+	}
 }
 
 void CS2ACPlugin::TestWebhook()

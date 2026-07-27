@@ -184,9 +184,13 @@ human decision.
 
 Be aware of these before trusting it completely.
 
-- **This fork has never been compiled.** It was written without a C++ toolchain, CS2
-  headers or the SDK submodules available. It needs a real build before it goes
-  anywhere near a server. Nothing in `src/karasu/` has been executed.
+- **No detector has fired through this code path yet.** The plugin builds clean
+  (clang++, `-Wall -Werror`, C++17) and loads on a real CS2 dedicated server, and
+  `cs2ac_karasu_test_report` exercises the policy lookup, corroboration ledger, JSON
+  writer, base64url encoder, length budget and console emit. But a *genuine* detection
+  needs a real client connected and playing — bots do not drive `ProcessUsercmds`, which
+  is where most detectors get their input. Until that happens, the seam between a
+  detector firing and `EvaluateKarasuPolicy` is reasoned about, not observed.
 - **Confidence is per-detector, not per-event** (see above). Threading real evidence
   values out of the nine detector modules is the obvious next improvement.
 - **The relay is fire-and-forget.** There is no acknowledgement from the Karasu plugin,

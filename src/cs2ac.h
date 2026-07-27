@@ -77,6 +77,7 @@ public:
 	void OnConfigLoaded();
 	void CheckConfig() const;
 	void TestAnnouncement() const;
+	void TestKarasuRelay(const char *detection);
 	void TestWebhook();
 	void ReportConfigLoadTimeout();
 
