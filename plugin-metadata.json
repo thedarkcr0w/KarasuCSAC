@@ -1,11 +1,11 @@
 {
     "name": "cs2ac",
     "alias": "cs2ac",
-    "display_name": "CS2AC",
-    "description": "Counter-Strike 2 server sided anti-cheat made by karola3vax.",
-    "author": "karola3vax",
-    "url": "https://steamcommunity.com/profiles/76561198353131845/",
-    "log_tag": "CS2AC",
+    "display_name": "KarasuCSAC",
+    "description": "Server-side anti-cheat for Karasu. Fork of CS2AC by karola3vax.",
+    "author": "Karasu (fork of CS2AC by karola3vax)",
+    "url": "https://github.com/thedarkcr0w/KarasuCSAC",
+    "log_tag": "KarasuCSAC",
     "license": "AGPL-3.0",
     "version": "1.0.2"
 }

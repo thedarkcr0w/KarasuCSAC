@@ -3,6 +3,8 @@
 #include "detection/detection_system.h"
 #include "clientcvar/client_cvar_value.h"
 #include "common.h"
+#include "karasu/karasu_relay.h"
+#include "utils/utils.h"
 #include "version_gen.h"
 
 class WebhookService;
@@ -94,7 +96,18 @@ private:
 		Ban,
 	};
 
+	// Result of running the Karasu policy for one detection. When handled is set,
+	// Karasu owns enforcement for this detection and the upstream punishment command
+	// path is skipped entirely, so a server can never both kick locally and run an
+	// admin-plugin ban for the same event.
+	struct KarasuOutcome
+	{
+		bool handled {};
+		utils::DetectionOutcome outcome {};
+	};
+
 	bool Activate(char *error, size_t maxlen, bool late);
+	KarasuOutcome EvaluateKarasuPolicy(const char *detection, MovementPlayer *player, std::uint64_t steamId, std::string_view evidence);
 	void ResetRuntime();
 	void CleanupRuntime();
 	bool loaded {};
@@ -109,6 +122,10 @@ private:
 	detection::DetectionSystem detectionSystem;
 	WebhookService *webhook {};
 	std::array<PunishmentLevel, MAXPLAYERS + 1> punishmentLevels {};
+	// Per-session corroboration ledger, one per slot. Cleared on disconnect so a
+	// slot cannot inherit the previous occupant's evidence. The durable,
+	// cross-session ledger lives on the Karasu API.
+	std::array<karasu::PlayerVerdict, MAXPLAYERS + 1> karasuVerdicts {};
 };
 
 extern CS2ACPlugin g_CS2AC;

@@ -1,7 +1,11 @@
 [submodule "hl2sdk-cs2"]
 	path = hl2sdk-cs2
 	url = https://github.com/alliedmodders/hl2sdk.git
-	branch = cs2
+	# Deliberately NOT tracking the cs2 branch. The gitlink commit recorded in this
+	# repository is the SDK revision this plugin was built and tested against, and a
+	# floating branch means "git submodule update --remote" can silently move the
+	# server-side detection code onto an untested SDK. Update it by checking out a
+	# specific SDK commit and committing the new gitlink on purpose.
 [submodule "metamod-source"]
 	path = metamod-source
 	url = https://github.com/alliedmodders/metamod-source.git

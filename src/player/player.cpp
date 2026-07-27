@@ -59,12 +59,21 @@ const char *Player::GetName()
 	return sanitizedName.Get();
 }
 
-u64 Player::GetSteamId64(bool)
+u64 Player::GetSteamId64(bool validated)
 {
 	auto *client = GetClient();
 	if (client)
 	{
 		return client->GetClientSteamID().ConvertToUint64();
+	}
+	// The remaining sources are not authenticated: the controller's copy, and the
+	// raw xuid captured on client activation. Those are fine for logging and for
+	// announcements, but a caller that is about to act against somebody's account -
+	// the Karasu ban relay - passes validated and must get nothing back rather than
+	// an identity that could belong to a different player.
+	if (validated)
+	{
+		return 0;
 	}
 	auto *controller = GetController();
 	return controller ? controller->m_steamID() : unauthenticatedSteamID;

@@ -1,3 +1,32 @@
+> ## KarasuCSAC — a fork of [CS2AC](https://github.com/karola3vax/CS2AC)
+>
+> This is **not** the upstream project. It is Karasu's fork of `karola3vax/CS2AC`,
+> modified so that a detection can result in an automatic ban on the
+> [Karasu](https://karasu.live) platform rather than only a server-local punishment
+> command.
+>
+> **All detection logic is upstream's work, and all credit for it belongs to
+> [karola3vax](https://github.com/karola3vax).** CS2AC is licensed AGPL-3.0 and so is
+> this fork; see [LICENSE](LICENSE) and [Third-party notices](THIRD_PARTY_NOTICES.md).
+>
+> What this fork changes, and nothing else:
+>
+> - Adds `src/karasu/` — a per-detector enforcement tier table, a corroboration
+>   ledger, and a console relay that hands detections to the Karasu CS2 plugin.
+> - Classifies all 17 detectors into three tiers so that a single noisy heuristic
+>   cannot ban a legitimate player. Five detectors can **never** produce a ban.
+> - Replaces the admin-plugin punishment command with an engine `kickid`, because on
+>   Karasu the authoritative ban is the platform account ban, not a server-local one.
+> - Implements the previously-ignored `validated` argument of `Player::GetSteamId64`,
+>   so an unauthenticated SteamID can never be the basis of a ban.
+>
+> Read [docs/KARASU.md](docs/KARASU.md) before deploying it. Upstream's own
+> documentation follows below and still describes how the detectors work.
+>
+> If you run a community server and just want an anti-cheat, use
+> **[upstream CS2AC](https://github.com/karola3vax/CS2AC)** — this fork is wired to
+> one specific platform and is less useful to you.
+
 <div align="center">
 
 <img src="docs/cs2ac-logo.png" width="760" alt="CS2AC">

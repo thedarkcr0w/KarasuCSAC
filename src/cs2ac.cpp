@@ -26,12 +26,9 @@ PLUGIN_EXPOSE(CS2ACPlugin, g_CS2AC);
 
 namespace
 {
-	static constexpr const char *detectionNames[] = {
-		"AIMBOT",    "AIMLOCK",     "ANTIAIM",          "AUTOSTRAFE",   "BHOP",          "DLL INJECTION",      "DESUBTICKING",
-		"DOUBLETAP", "HYPERSCROLL", "INHUMAN ACCURACY", "INVALID CVAR", "INVALID INPUT", "IRREGULAR BEHAVIOR", "NAMECHANGER",
-		"NULLS",     "SILENTAIM",   "SUBTICK SPAM",
-	};
-	static_assert(CS2AC_ARRAYSIZE(detectionNames) == static_cast<size_t>(DetectionType::Count));
+	// The detection name table lives in src/karasu/karasu_policy.cpp so that the
+	// names shown here and the enforcement tier keyed on DetectionType cannot drift
+	// apart. See karasu::DetectionDisplayName.
 
 	void HandleDetectionCallback(const char *detection, MovementPlayer *player, std::string_view evidence)
 	{
@@ -633,6 +630,15 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 		return;
 	}
 
+	// Karasu policy runs before the upstream punishment path and takes it over
+	// whenever enforcement is armed, so a detection can never be punished twice.
+	const KarasuOutcome karasu = EvaluateKarasuPolicy(detection, player, steamId, evidence);
+	if (karasu.handled)
+	{
+		finish(karasu.outcome);
+		return;
+	}
+
 	const PunishmentLevel requested = kickOnly || IsKickOnlyDetection(detection) ? PunishmentLevel::Kick : PunishmentLevel::Ban;
 	auto &issued = punishmentLevels[player->index];
 	if (issued >= requested)
@@ -681,6 +687,148 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 	issued = requested;
 }
 
+CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detection, MovementPlayer *player, std::uint64_t steamId,
+															 std::string_view evidence)
+{
+	KarasuOutcome result;
+
+	const int enforceLevel = settings::GetKarasuEnforceLevel();
+	if (!settings::IsKarasuRelayEnabled() && enforceLevel == 0)
+	{
+		return result;
+	}
+
+	DetectionType type = DetectionType::Count;
+	if (!karasu::ResolveDetectionType(detection, type))
+	{
+		// An unrecognised detection name means the name table and the enum have
+		// drifted. Refuse to guess a tier rather than enforce on the wrong policy.
+		Msg("[CS2AC] Karasu policy skipped: '%s' is not a known detection name.\n", detection);
+		return result;
+	}
+
+	const std::string playerName = SanitizeConsoleText(player->GetName());
+	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
+	karasu::Verdict verdict = karasuVerdicts[player->index].Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
+																settings::GetKarasuMinConfidence());
+
+	// Whether the policy judged this player a cheater, decided before the relay
+	// recommendation is adjusted below.
+	const bool policyBan = verdict.action == karasu::Action::Ban;
+
+	// Enforcement level 1 removes the player from this server but does not ask the
+	// platform for an account ban, so the recommendation carried in the relay has to
+	// be downgraded to match - the API acts on what it is told, not on the tier.
+	if (enforceLevel < 2 && policyBan)
+	{
+		verdict.action = karasu::Action::Kick;
+	}
+
+	// The platform refuses to ban on an identity it cannot trust, so establish it
+	// here rather than letting the API guess from a bare SteamID64.
+	const std::uint64_t validatedSteamId = player->GetSteamId64(true);
+	const karasu::IdentitySource identity = validatedSteamId != 0 && validatedSteamId == steamId
+											   ? karasu::IdentitySource::Authenticated
+											   : karasu::IdentitySource::Unauthenticated;
+
+	karasu::RelayReport report;
+	report.steamId = steamId;
+	report.detectionName = karasu::DetectionDisplayName(type);
+	report.playerName = playerName.c_str();
+	report.detection = type;
+	report.policy = policy;
+	report.verdict = verdict;
+	report.identity = identity;
+	report.evidence = evidence;
+	report.userId = interfaces::pEngine ? interfaces::pEngine->GetPlayerUserId(player->GetPlayerSlot()).Get() : -1;
+	if (auto *globals = g_pCS2ACUtils->GetServerGlobals())
+	{
+		report.serverTick = globals->tickcount;
+	}
+
+	Msg("[CS2AC] Karasu policy for %s: tier %s, confidence %d, rule %s, recommendation %s.\n", playerName.c_str(),
+		karasu::TierName(policy.tier), verdict.confidence, verdict.rule, karasu::ActionName(verdict.action));
+
+	// Enforcement disabled: still report, so the platform can build its ledger and
+	// staff can review, but leave the upstream punishment path in charge.
+	if (enforceLevel == 0)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		return result;
+	}
+
+	result.handled = true;
+
+	if (!policyBan)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::PunishmentDisabled;
+		return result;
+	}
+
+	auto &issued = punishmentLevels[player->index];
+	if (issued >= PunishmentLevel::Ban)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::AlreadyPunished;
+		return result;
+	}
+
+	const char *commandTemplate = settings::GetKarasuKickCommand();
+	if (!commandTemplate || !*commandTemplate)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::PunishmentDisabled;
+		Msg("[CS2AC] No removal was sent because cs2ac_karasu_kick_command is empty.\n");
+		return result;
+	}
+	if (!interfaces::pEngine)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::CommandServiceUnavailable;
+		return result;
+	}
+	if (report.userId < 0)
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::IdentityUnavailable;
+		Msg("[CS2AC] No removal was sent because %s's user ID is not ready yet.\n", playerName.c_str());
+		return result;
+	}
+
+	std::string command = commandTemplate;
+	ReplaceAll(command, "{steamid64}", std::to_string(steamId));
+	ReplaceAll(command, "{userid}", std::to_string(report.userId));
+	ReplaceAll(command, "{detection}", report.detectionName);
+	if (command.size() >= static_cast<size_t>(CCommand::MaxCommandLength()))
+	{
+		report.localAction = karasu::Action::Alert;
+		karasu::relay::Emit(report);
+		result.outcome = utils::DetectionOutcome::CommandTooLong;
+		Msg("[CS2AC] No removal was sent because cs2ac_karasu_kick_command is too long.\n");
+		return result;
+	}
+
+	// Report before removing. Once the player is gone the slot can be reused, and
+	// the relay reads the player's name and user id out of it.
+	report.localAction = karasu::Action::Kick;
+	karasu::relay::Emit(report);
+
+	command.push_back('\n');
+	interfaces::pEngine->ServerCommand(command.c_str());
+	command.pop_back();
+	Msg("[CS2AC] Sent: %s\n", SanitizeConsoleText(command.c_str()).c_str());
+	issued = PunishmentLevel::Ban;
+	result.outcome = utils::DetectionOutcome::PunishmentSent;
+	return result;
+}
+
 void CS2ACPlugin::OnClientFullyConnect(CPlayerSlot slot)
 {
 	detectionSystem.OnClientReady(g_pCS2ACPlayerManager->ToPlayer(slot));
@@ -699,6 +847,9 @@ void CS2ACPlugin::OnClientDisconnect(CPlayerSlot slot)
 	if (player)
 	{
 		punishmentLevels[player->index] = PunishmentLevel::None;
+		// The slot is about to be reused, so the corroboration ledger has to go with
+		// the player - otherwise the next occupant inherits their strikes.
+		karasuVerdicts[player->index].Reset();
 		Msg("[CS2AC] Cleared %s's detection evidence because they disconnected.\n", playerName.c_str());
 	}
 }
@@ -795,8 +946,41 @@ void CS2ACPlugin::CheckConfig() const
 		Msg("[CS2AC] Review cs2ac_whitelist: %zu duplicate entries were ignored.\n", settings::GetDuplicateWhitelistCount());
 		++findings;
 	}
-	findings += CheckCommandTemplate("cs2ac_punishment_command", settings::GetPunishmentCommand(), true);
-	findings += CheckCommandTemplate("cs2ac_kick_command", settings::GetKickCommand(), false);
+	const int karasuEnforce = settings::GetKarasuEnforceLevel();
+	if (karasuEnforce > 0)
+	{
+		// Karasu owns enforcement, so the upstream admin-plugin commands are meant to
+		// be empty here. Leaving one set means a detection would remove the player
+		// twice: once through Karasu and once through the admin plugin.
+		const char *punishment = settings::GetPunishmentCommand();
+		const char *kick = settings::GetKickCommand();
+		if ((punishment && *punishment) || (kick && *kick))
+		{
+			Msg("[CS2AC] Review cs2ac_punishment_command and cs2ac_kick_command: cs2ac_karasu_enforce is %d, so Karasu already removes "
+				"detected players. Set both of these to \"\" to avoid punishing twice.\n",
+				karasuEnforce);
+			++findings;
+		}
+		findings += CheckCommandTemplate("cs2ac_karasu_kick_command", settings::GetKarasuKickCommand(), false);
+		if (!settings::IsKarasuRelayEnabled())
+		{
+			Msg("[CS2AC] Review cs2ac_karasu_relay: it is off while cs2ac_karasu_enforce is %d, so players are removed from this server but "
+				"the platform never hears about it.\n",
+				karasuEnforce);
+			++findings;
+		}
+		const char *relayCommand = settings::GetKarasuRelayCommand();
+		if (!relayCommand || !*relayCommand)
+		{
+			Msg("[CS2AC] Review cs2ac_karasu_relay_command: it is empty, so detections cannot reach the Karasu plugin.\n");
+			++findings;
+		}
+	}
+	else
+	{
+		findings += CheckCommandTemplate("cs2ac_punishment_command", settings::GetPunishmentCommand(), true);
+		findings += CheckCommandTemplate("cs2ac_kick_command", settings::GetKickCommand(), false);
+	}
 	if (!WebhookService::IsValidUrl(settings::GetWebhookUrl()))
 	{
 		Msg("[CS2AC] Review cs2ac_webhook_url: it is not a Discord webhook URL.\n");
@@ -889,7 +1073,7 @@ void CS2ACPlugin::PrintStatus() const
 		{
 			enabledNames += ", ";
 		}
-		enabledNames += detectionNames[index];
+		enabledNames += karasu::DetectionDisplayName(static_cast<DetectionType>(index));
 	}
 
 	Msg("[CS2AC] Status: %s, version %s.\n", loaded ? "running" : "not running", PLUGIN_FULL_VERSION);
@@ -920,6 +1104,15 @@ void CS2ACPlugin::PrintStatus() const
 	Msg("[CS2AC] Punishments: permanent ban %s, kick %s.\n",
 		settings::GetPunishmentCommand() && *settings::GetPunishmentCommand() ? "configured" : "disabled",
 		settings::GetKickCommand() && *settings::GetKickCommand() ? "configured" : "disabled");
+	const int karasuEnforce = settings::GetKarasuEnforceLevel();
+	const char *karasuEnforceText = karasuEnforce >= 2   ? "kick and ask the platform to ban"
+									: karasuEnforce == 1 ? "kick on this server only"
+														 : "report only";
+	Msg("[CS2AC] Karasu: relay %s, enforcement %s.\n", settings::IsKarasuRelayEnabled() ? "on" : "off", karasuEnforceText);
+	Msg("[CS2AC] Karasu policy: Tier B needs confidence %d, corroboration window %d seconds.\n", settings::GetKarasuMinConfidence(),
+		settings::GetKarasuCorroborationWindow());
+	Msg("[CS2AC] Karasu relay: %llu sent, %llu dropped, %llu truncated.\n", static_cast<unsigned long long>(karasu::relay::EmittedCount()),
+		static_cast<unsigned long long>(karasu::relay::DroppedCount()), static_cast<unsigned long long>(karasu::relay::TruncatedCount()));
 	const size_t webhookQueueSize = webhook ? webhook->QueueSize() : 0;
 	Msg("[CS2AC] Discord webhook: %s, %zu queued report%s.\n",
 		webhook && webhook->IsConfigured() ? (webhook->IsDisabled() ? "disabled after an error" : "configured") : "not configured", webhookQueueSize,
@@ -950,6 +1143,10 @@ void CS2ACPlugin::ResetRuntime()
 	detectionSystem.Reset();
 	g_pCS2ACPlayerManager->ResetPlayers();
 	punishmentLevels.fill(PunishmentLevel::None);
+	for (auto &verdict : karasuVerdicts)
+	{
+		verdict.Reset();
+	}
 }
 
 void CS2ACPlugin::CleanupRuntime()
@@ -963,6 +1160,9 @@ void CS2ACPlugin::CleanupRuntime()
 		delete webhook;
 		webhook = nullptr;
 	}
+	// Re-seeds the relay nonce, so a reload cannot reuse an idempotency key that the
+	// platform has already recorded against a previous detection.
+	karasu::relay::Reset();
 	bool sourceHooksRemoved = hooks::Cleanup();
 	utils::ResetDetectionAnnouncement();
 	RemoveAllTimers();

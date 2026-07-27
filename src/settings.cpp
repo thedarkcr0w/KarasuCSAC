@@ -17,6 +17,11 @@ namespace
 	std::size_t duplicateWhitelistEntries {};
 	std::uint64_t settingsRevision {1};
 
+	// Defaults for the Karasu knobs, used before the config has been executed and
+	// whenever a value in cs2ac.cfg does not parse.
+	constexpr int karasuDefaultMinConfidence = 72;
+	constexpr int karasuDefaultCorroborationWindow = 1800;
+
 	std::vector<std::uint64_t> &WhitelistedSteamIds()
 	{
 		static std::vector<std::uint64_t> steamIds;
@@ -98,7 +103,63 @@ namespace
 											CUtlString("")};
 		CConVar<CUtlString> whitelist {"cs2ac_whitelist", FCVAR_NONE, "SteamID64s that CS2AC may detect but never punish", CUtlString(""),
 									   OnWhitelistChanged};
+
+		// --- Karasu platform integration ---------------------------------------
+		// The numeric knobs below are declared as strings deliberately. Every other
+		// convar in this plugin is CConVar<bool> or CConVar<CUtlString>, so those two
+		// instantiations are known to build against the pinned SDK; a numeric one is
+		// not exercised anywhere in the tree. From a cs2ac.cfg author's point of view
+		// nothing changes - "cs2ac_karasu_enforce 2" still reads as a number - and
+		// ParseBoundedInt below clamps whatever arrives into a safe range.
+		CConVar<bool> karasuRelay {"cs2ac_karasu_relay", FCVAR_NONE, "Relay detections to the Karasu CS2 plugin", true};
+		CConVar<CUtlString> karasuRelayCommand {"cs2ac_karasu_relay_command", FCVAR_NONE,
+												"Server command the Karasu CS2 plugin listens on for detection reports",
+												CUtlString("karasu_anticheat_report")};
+		CConVar<CUtlString> karasuEnforce {"cs2ac_karasu_enforce", FCVAR_NONE,
+										   "Karasu enforcement: 0 report only, 1 kick locally, 2 kick and ask the platform to ban",
+										   CUtlString("2")};
+		CConVar<CUtlString> karasuKickCommand {"cs2ac_karasu_kick_command", FCVAR_NONE,
+											   "Command used to remove a player the Karasu policy has judged a cheater",
+											   CUtlString("kickid {userid} Karasu Anti-Cheat")};
+		CConVar<CUtlString> karasuMinConfidence {"cs2ac_karasu_min_confidence", FCVAR_NONE,
+												 "Confidence a Tier B detection must reach to count toward corroboration (0-100)",
+												 CUtlString("72")};
+		CConVar<CUtlString> karasuCorroborationWindow {"cs2ac_karasu_corroboration_window", FCVAR_NONE,
+													   "Seconds a detection stays eligible to corroborate another one", CUtlString("1800")};
 	};
+
+	int ParseBoundedInt(const char *value, int fallback, int lowest, int highest)
+	{
+		if (!value || !*value)
+		{
+			return fallback;
+		}
+		std::string text = value;
+		// Tolerate the surrounding whitespace a hand-edited cfg tends to pick up.
+		const auto first = text.find_first_not_of(" \t\r\n");
+		if (first == std::string::npos)
+		{
+			return fallback;
+		}
+		const auto last = text.find_last_not_of(" \t\r\n");
+		text = text.substr(first, last - first + 1);
+
+		int parsed = 0;
+		const auto result = std::from_chars(text.data(), text.data() + text.size(), parsed);
+		if (result.ec != std::errc() || result.ptr != text.data() + text.size())
+		{
+			return fallback;
+		}
+		if (parsed < lowest)
+		{
+			return lowest;
+		}
+		if (parsed > highest)
+		{
+			return highest;
+		}
+		return parsed;
+	}
 
 	Configuration *configuration {};
 
@@ -273,6 +334,50 @@ const char *settings::GetWebhookServerAddress()
 const char *settings::GetWebhookLogoUrl()
 {
 	return configuration ? configuration->webhookLogoUrl.Get().Get() : "";
+}
+
+bool settings::IsKarasuRelayEnabled()
+{
+	return configuration && configuration->karasuRelay.GetBool();
+}
+
+const char *settings::GetKarasuRelayCommand()
+{
+	return configuration ? configuration->karasuRelayCommand.Get().Get() : "";
+}
+
+int settings::GetKarasuEnforceLevel()
+{
+	if (!configuration)
+	{
+		return 0;
+	}
+	return ParseBoundedInt(configuration->karasuEnforce.Get().Get(), 0, 0, 2);
+}
+
+const char *settings::GetKarasuKickCommand()
+{
+	return configuration ? configuration->karasuKickCommand.Get().Get() : "";
+}
+
+int settings::GetKarasuMinConfidence()
+{
+	if (!configuration)
+	{
+		return karasuDefaultMinConfidence;
+	}
+	return ParseBoundedInt(configuration->karasuMinConfidence.Get().Get(), karasuDefaultMinConfidence, 0, 100);
+}
+
+int settings::GetKarasuCorroborationWindow()
+{
+	if (!configuration)
+	{
+		return karasuDefaultCorroborationWindow;
+	}
+	// A window under a minute makes corroboration unreachable; a day is already
+	// longer than any match, and the platform holds the real long-horizon ledger.
+	return ParseBoundedInt(configuration->karasuCorroborationWindow.Get().Get(), karasuDefaultCorroborationWindow, 60, 86400);
 }
 
 void settings::MarkConfigReloaded()

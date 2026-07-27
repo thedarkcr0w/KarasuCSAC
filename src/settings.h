@@ -46,6 +46,20 @@ namespace settings
 	const char *GetWebhookRoleId();
 	const char *GetWebhookServerAddress();
 	const char *GetWebhookLogoUrl();
+
+	// --- Karasu platform integration -------------------------------------------
+	// Relay detections to the Karasu CS2 plugin, which owns the match context, the
+	// report token and the API credentials. CS2AC itself holds no secret.
+	bool IsKarasuRelayEnabled();
+	const char *GetKarasuRelayCommand();
+	// 0 = report only, 1 = kick locally, 2 = kick and ask the platform to ban.
+	int GetKarasuEnforceLevel();
+	const char *GetKarasuKickCommand();
+	// Floor a Tier B detection must clear to count toward corroboration, 0-100.
+	int GetKarasuMinConfidence();
+	// How long, in seconds, a detection stays eligible to corroborate another.
+	int GetKarasuCorroborationWindow();
+
 	void MarkConfigReloaded();
 	void ExecuteConfig();
 } // namespace settings
