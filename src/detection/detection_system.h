@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "localization.h"
 #include "sdk/datatypes.h"
 
 #include <array>
@@ -17,7 +18,7 @@ class PlayerCommand;
 namespace detection
 {
 	using Clock = std::chrono::steady_clock;
-	using AnnounceCallback = void (*)(const char *detection, MovementPlayer *player, std::string_view evidence);
+	using AnnounceCallback = void (*)(const char *detection, MovementPlayer *player, const localization::Text &evidence);
 
 	bool IsBallisticWeapon(std::string_view weapon);
 	bool IsEligibleHuman(MovementPlayer *player);
@@ -80,6 +81,9 @@ namespace detection
 		bool impactSeen {};
 		bool hurtSeen {};
 		bool deathSeen {};
+		bool headshot {};
+		bool wallbang {};
+		bool throughSmoke {};
 		bool aimbotConsumed {};
 		bool silentMeasured {};
 		bool silentConsumed {};
@@ -127,20 +131,54 @@ namespace detection
 	{
 		int serverTick {-1};
 		int incidents {};
+		std::string weapon;
+		int lastCommandNumber {-1};
+		int lastClientTick {-1};
+		Clock::time_point nextNetworkSample;
+		std::deque<Clock::time_point> commandGaps;
+
+		struct NetworkSample
+		{
+			Clock::time_point time;
+			float pingMilliseconds {};
+			float incomingLoss {};
+			float outgoingLoss {};
+			float incomingChoke {};
+			float outgoingChoke {};
+			bool valid {};
+		};
+
+		struct NetworkEvidence
+		{
+			float pingMilliseconds {};
+			float jitterMilliseconds {};
+			float incomingLoss {};
+			float outgoingLoss {};
+			float incomingChoke {};
+			float outgoingChoke {};
+			int commandGaps {};
+			int unavailableSamples {};
+			bool vetoed {};
+		} networkEvidence;
+
+		std::deque<NetworkSample> networkSamples;
 	};
 
 	// Detects two weapon-fire events arriving in the same or next server tick.
 	class DoubletapModule
 	{
 	public:
-		void Load(AnnounceCallback announce);
+		void Load(AnnounceCallback announce, AnnounceCallback announceNetworkVeto);
 		void Unload();
 		void Reset();
-		void OnWeaponFire(MovementPlayer *player, int currentTick);
+		void OnGameFrame();
+		void OnProcessUsercmds(MovementPlayer *player, PlayerCommand *commands, int numCommands);
+		void OnWeaponFire(IGameEvent *event, MovementPlayer *player, int currentTick);
 		void OnClientDisconnect(MovementPlayer *player);
 
 	private:
 		AnnounceCallback announce {};
+		AnnounceCallback announceNetworkVeto {};
 		std::array<DoubletapState, MAXPLAYERS + 1> playerData;
 	};
 
@@ -346,7 +384,8 @@ namespace detection
 		void OnClientDisconnect(MovementPlayer *player);
 
 	private:
-		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous, bool mismatch = false);
+		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reasonKey, const char *reason, bool continuous,
+						 bool mismatch = false);
 		void ApplyDecay(MovementPlayer *player, AntiAimPlayerData &data);
 		void EvaluateMotion(MovementPlayer *player, AntiAimPlayerData &data, AntiAimCommand &command);
 		void EvaluatePendingShot(MovementPlayer *player, AntiAimPlayerData &data, int currentTick);
@@ -459,7 +498,7 @@ namespace detection
 	class DetectionSystem
 	{
 	public:
-		void Load(AnnounceCallback announce);
+		void Load(AnnounceCallback announce, AnnounceCallback announceNetworkVeto);
 		void Unload();
 		void Reset();
 		void OnProcessUsercmds(MovementPlayer *player, PlayerCommand *commands, int numCommands);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "localization.h"
 #include "movement_analysis/player_context.h"
 
 class Jump;
@@ -137,10 +138,10 @@ public:
 	std::set<std::string> invalidCvarLatches;
 	std::set<std::string> invalidQueriedCvars;
 	std::set<std::string> invalidUserInfoCvars;
-	void MarkInvalidCvar(const char *cvarName, const std::string &reason, bool kickOnly = false);
+	void MarkInvalidCvar(const char *cvarName, const localization::Text &reason, bool kickOnly = false);
 	void MarkValidCvar(const char *cvarName);
-	void MarkCvarSource(const char *cvarName, const std::string &reason, bool invalid, bool userInfo, bool kickOnly = false);
-	void MarkInfraction(Infraction::Type type, const std::string &reason, bool kickOnly = false);
+	void MarkCvarSource(const char *cvarName, const localization::Text &reason, bool invalid, bool userInfo, bool kickOnly = false);
+	void MarkInfraction(Infraction::Type type, const localization::Text &reason, bool kickOnly = false);
 
 private:
 	void RefreshSettings();

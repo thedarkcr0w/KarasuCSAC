@@ -17,7 +17,7 @@ CConVar<bool> cs2ac_silentaim_debug("cs2ac_silentaim_debug", FCVAR_NONE, "Show w
 
 namespace
 {
-	constexpr int detectionScore = 8;
+	constexpr int detectionScore = 12;
 	constexpr auto evidenceWindow = std::chrono::minutes(10);
 	constexpr float minimumImpactDistance = 100.0f;
 	constexpr float maximumImpactDistance = 10000.0f;
@@ -105,7 +105,10 @@ namespace detection
 			return;
 		}
 
-		const int points = shot.silentMaxDeviation > 22.0f ? 3 : shot.airborne ? 1 : 2;
+		const int points = (shot.silentMaxDeviation > 22.5f ? 3
+							: shot.airborne                 ? 1
+															: 2)
+						   + static_cast<int>(shot.headshot) + static_cast<int>(shot.wallbang) + static_cast<int>(shot.throughSmoke);
 		const auto now = Clock::now();
 		auto &incidents = evidence[player->index];
 		while (!incidents.empty() && now - incidents.front().time >= evidenceWindow)
@@ -125,9 +128,14 @@ namespace detection
 		{
 			if (announce)
 			{
-				announce("SILENTAIM", player,
-						 tfm::format("%.2f degrees from visible aim added %d points; the rolling score reached %d/%d.", shot.silentMaxDeviation,
-									 points, total, detectionScore));
+				announce(
+					"SILENTAIM", player,
+					localization::Format("evidence.silentaim",
+										 "{deviation} degrees from visible aim added {points} points; the rolling score reached {score}/{threshold}.",
+										 {{"deviation", tfm::format("%.2f", shot.silentMaxDeviation)},
+										  {"points", tfm::format("%d", points)},
+										  {"score", tfm::format("%d", total)},
+										  {"threshold", tfm::format("%d", detectionScore)}}));
 			}
 			incidents.clear();
 		}
@@ -139,30 +147,30 @@ namespace detection
 		if (weapon == "ak47" || weapon == "m4a1" || weapon == "m4a1_silencer" || weapon == "galilar" || weapon == "famas" || weapon == "aug"
 			|| weapon == "sg556" || weapon == "g3sg1" || weapon == "scar20")
 		{
-			return 12.0f;
+			return 12.5f;
 		}
 		if (weapon == "awp" || weapon == "ssg08")
 		{
-			return 2.0f;
+			return 2.5f;
 		}
 		if (weapon == "deagle" || weapon == "revolver")
 		{
-			return 4.0f;
+			return 4.5f;
 		}
 		if (weapon == "glock" || weapon == "hkp2000" || weapon == "usp_silencer" || weapon == "elite" || weapon == "p250" || weapon == "tec9"
 			|| weapon == "fiveseven" || weapon == "cz75a")
 		{
-			return 3.8f;
+			return 4.3f;
 		}
 		if (weapon == "mac10" || weapon == "mp9" || weapon == "mp7" || weapon == "mp5sd" || weapon == "ump45" || weapon == "p90" || weapon == "bizon")
 		{
-			return 22.0f;
+			return 22.5f;
 		}
 		if (weapon == "nova" || weapon == "xm1014" || weapon == "sawedoff" || weapon == "mag7" || weapon == "m249" || weapon == "negev")
 		{
-			return 13.0f;
+			return 13.5f;
 		}
-		return 15.0f;
+		return 15.5f;
 	}
 
 	void SilentAimModule::OnClientDisconnect(MovementPlayer *player)

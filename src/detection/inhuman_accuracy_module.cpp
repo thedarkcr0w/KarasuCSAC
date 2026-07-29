@@ -193,7 +193,10 @@ namespace detection
 		if (announce)
 		{
 			announce("INHUMAN ACCURACY", player,
-					 tfm::format("%d of %d qualifying shots hit (%.1f%% accuracy).", hits, attempts, attempts ? hits * 100.0 / attempts : 0.0));
+					 localization::Format("evidence.inhuman_accuracy", "{hits} of {attempts} qualifying shots hit ({accuracy}% accuracy).",
+										  {{"hits", tfm::format("%d", hits)},
+										   {"attempts", tfm::format("%d", attempts)},
+										   {"accuracy", tfm::format("%.1f", attempts ? hits * 100.0 / attempts : 0.0)}}));
 		}
 		data.evidence.clear();
 	}

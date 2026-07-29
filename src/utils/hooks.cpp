@@ -39,7 +39,7 @@ namespace
 	};
 
 	std::vector<PendingGameEvent> pendingGameEvents;
-	constexpr unsigned watermarkRoundInterval = 6;
+	constexpr unsigned watermarkRoundInterval = 5;
 	unsigned completedRounds {};
 	bool AddTeleportHook(MovementPlayer *player);
 

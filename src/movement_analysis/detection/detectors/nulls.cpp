@@ -539,10 +539,24 @@ void MovementDetectionService::AnalyzeNullsForAxis(const std::deque<InputEvent> 
 	if (maxConsecutivePerfect >= adjustedRequiredPerfectCstrafes)
 	{
 		const char *axis = button1 == IN_FORWARD ? "forward/backward" : "left/right";
-		std::string details =
+		const std::string localizedAxis =
+			localization::Get(button1 == IN_FORWARD ? "evidence.nulls.axis.forward_backward" : "evidence.nulls.axis.left_right", axis);
+		localization::Text details {
 			tinyformat::format("The %s inputs reached a perfect-timing score of %u; %u was required. "
 							   "Median release-to-press gap: %.2f ms; overlap score: %u; measured FPS: %.2f.",
-							   axis, maxConsecutivePerfect, adjustedRequiredPerfectCstrafes, underlapMedian * 1000, numOverlaps, 1 / medianFramerate);
+							   axis, maxConsecutivePerfect, adjustedRequiredPerfectCstrafes, underlapMedian * 1000, numOverlaps, 1 / medianFramerate),
+			localization::Format(
+				"evidence.nulls",
+				"The {axis} inputs reached a perfect-timing score of {score}; {required} was required. Median release-to-press gap: {gap} ms; "
+				"overlap score: {overlaps}; measured FPS: {fps}.",
+				{{"axis", localizedAxis},
+				 {"score", tfm::format("%u", maxConsecutivePerfect)},
+				 {"required", tfm::format("%u", adjustedRequiredPerfectCstrafes)},
+				 {"gap", tfm::format("%.2f", underlapMedian * 1000)},
+				 {"overlaps", tfm::format("%u", numOverlaps)},
+				 {"fps", tfm::format("%.2f", 1 / medianFramerate)}})
+				.localized,
+		};
 		this->MarkInfraction(MovementDetectionService::Infraction::Type::Nulls, details);
 		if (button1 == IN_FORWARD)
 		{

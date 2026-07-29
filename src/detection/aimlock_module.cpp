@@ -22,7 +22,7 @@ CConVar<bool> cs2ac_aimlock_debug("cs2ac_aimlock_debug", FCVAR_NONE, "Show Aimlo
 
 namespace
 {
-	constexpr int trackingTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 2.0f);
+	constexpr int trackingTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 1.5f);
 	constexpr int rearmTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr int lagSearchRadius = 2;
 	constexpr float playerHalfWidth = 16.0f; // The CS2 player hull is 32 units wide; aim is measured from its center.
@@ -482,7 +482,7 @@ namespace detection
 			const AimlockLagHypothesis *best = BestHypothesis(data.track, false);
 			if (best)
 			{
-				AIMLOCK_DEBUG("%s episode: %.1f/2.0 seconds, best fixed delay %d ticks kept %d/%d samples within the target width; "
+				AIMLOCK_DEBUG("%s episode: %.1f/1.5 seconds, best fixed delay %d ticks kept %d/%d samples within the target width; "
 							  "target moved %.1f/%.1f required degrees.\n",
 							  player->GetName(), static_cast<float>(elapsedTicks) / ENGINE_FIXED_TICK_RATE, best->lagTicks, best->onTargetSamples,
 							  data.track.samples, best->maximumTargetDisplacement, best->requiredTargetDisplacement);
@@ -528,11 +528,17 @@ namespace detection
 		{
 			if (announce)
 			{
-				announce("AIMLOCK", player,
-						 tfm::format("%zu precise tracking episodes reached the threshold; the latest stayed on target for %d/%d samples "
-									 "while the target moved %.1f degrees against a %.1f-degree requirement.",
-									 incidents.size(), hypothesis.onTargetSamples, data.track.samples, hypothesis.maximumTargetDisplacement,
-									 hypothesis.requiredTargetDisplacement));
+				announce(
+					"AIMLOCK", player,
+					localization::Format(
+						"evidence.aimlock",
+						"{incidents} precise tracking episodes reached the threshold; the latest stayed on target for {precise}/{samples} samples "
+						"while the target moved {movement} degrees against a {required}-degree requirement.",
+						{{"incidents", tfm::format("%zu", incidents.size())},
+						 {"precise", tfm::format("%d", hypothesis.onTargetSamples)},
+						 {"samples", tfm::format("%d", data.track.samples)},
+						 {"movement", tfm::format("%.1f", hypothesis.maximumTargetDisplacement)},
+						 {"required", tfm::format("%.1f", hypothesis.requiredTargetDisplacement)}}));
 			}
 			incidents.clear();
 			data.latched = true;

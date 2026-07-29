@@ -255,7 +255,9 @@ would have been silently dead in production. The drop path now prints the actual
 
 ## What has been verified, and what has not
 
-Verified on a real CS2 dedicated server (Metamod:Source 2, `de_dust2`):
+Verified on a real CS2 dedicated server (Metamod:Source 2, `de_dust2`) **at fork version
+1.0.2**. The fork has since been synced to upstream CS2AC **1.0.6**, and that sync has
+**not** been re-verified on a server — see the upstream-sync note under Known gaps.
 
 - Builds clean under clang++, `-Wall -Werror`, C++17, via `./build-linux.sh`.
 - Loads: `meta list` shows `KarasuCSAC (1.0.2)`.
@@ -281,6 +283,20 @@ server running both this and the Karasu CS2 plugin.
 ## Known gaps
 
 Be aware of these before trusting it completely.
+- **A network-vetoed detection never reaches the platform.** Upstream 1.0.5 added a
+  network-safety veto to Doubletap: when a player's ping, loss or choke exceeds the safe
+  limits, `HandleDetection` announces the detection as `NetworkUnstable` and returns
+  **before** `EvaluateKarasuPolicy` runs. Nothing is relayed, so the strike never lands in
+  the platform ledger — which contradicts "record the strike, always" above. Upstream is
+  right that a laggy connection is not proof; the open question is whether Karasu wants
+  those detections relayed as **alert-only** (ledger sees them, nobody is ever punished
+  for them, and they do not feed corroboration) instead of dropped silently. Decide before
+  trusting Doubletap counts.
+- **The evidence string is relayed in English, not the server's language.** Upstream 1.0.4
+  localized detection evidence into 30+ languages; the relay deliberately carries
+  `evidence.english`, because the stored staff-review text must not change meaning with a
+  server's `cs2ac_language`, and multi-byte glyphs would eat the 511-byte budget. The
+  public chat/centre watermark and announcements do follow `cs2ac_language`.
 - **Confidence is per-detector, not per-event** (see above). Threading real evidence
   values out of the nine detector modules is the obvious next improvement.
 - **The relay is fire-and-forget.** There is no acknowledgement from the Karasu plugin,

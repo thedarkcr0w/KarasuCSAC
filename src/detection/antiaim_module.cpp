@@ -130,7 +130,8 @@ namespace detection
 		}
 	}
 
-	void AntiAimModule::AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reason, bool continuous, bool mismatch)
+	void AntiAimModule::AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reasonKey, const char *reason,
+									bool continuous, bool mismatch)
 	{
 		if (!player || data.suppressContinuous)
 		{
@@ -147,8 +148,17 @@ namespace detection
 		}
 		if (announce)
 		{
-			announce("ANTIAIM", player,
-					 tfm::format("%s added %.1f points and reached %.1f/%.0f evidence.", reason, weight, total, detectionThreshold));
+			const std::string localizedReason = localization::Get(reasonKey, reason);
+			localization::Text details {
+				tfm::format("%s added %.1f points and reached %.1f/%.0f evidence.", reason, weight, total, detectionThreshold),
+				localization::Format("evidence.antiaim", "{reason} added {points} points and reached {score}/{threshold} evidence.",
+									 {{"reason", localizedReason},
+									  {"points", tfm::format("%.1f", weight)},
+									  {"score", tfm::format("%.1f", total)},
+									  {"threshold", tfm::format("%.0f", detectionThreshold)}})
+					.localized,
+			};
+			announce("ANTIAIM", player, details);
 		}
 		data.score = 0.0f;
 		data.mismatchScore = 0.0f;
@@ -354,7 +364,7 @@ namespace detection
 		}
 		if (spinDetected && !data.suppressContinuous)
 		{
-			AddEvidence(player, data, detectionThreshold, "continuous spin", true);
+			AddEvidence(player, data, detectionThreshold, "evidence.antiaim.reason.spin", "continuous spin", true);
 			data.spinActive = true;
 		}
 		else if (!spinEpisodeActive)
@@ -433,7 +443,7 @@ namespace detection
 		}
 		if (data.jitterSeconds >= requiredJitterSeconds && !data.suppressContinuous)
 		{
-			AddEvidence(player, data, detectionThreshold, "continuous repeating jitter", true);
+			AddEvidence(player, data, detectionThreshold, "evidence.antiaim.reason.jitter", "continuous repeating jitter", true);
 			data.jitterActive = true;
 		}
 		else if (!jitterEpisodeActive)
@@ -497,7 +507,7 @@ namespace detection
 					  shot->subtickYaw);
 		if (std::isfinite(surrounding) && std::isfinite(snap) && surrounding < 10.0f && snap > minimumAttackReturnAngle && snap > surrounding * 5.0f)
 		{
-			AddEvidence(player, data, 5.0f, "one-command attack return", false);
+			AddEvidence(player, data, 5.0f, "evidence.antiaim.reason.attack_return", "one-command attack return", false);
 		}
 		else
 		{
@@ -561,7 +571,7 @@ namespace detection
 		if (found->problems != 0 && !data.suppressContinuous)
 		{
 			ANTIAIM_DEBUG("%s command %d is inconsistent: %s.\n", player->GetName(), found->commandNumber, ProblemName(found->problems));
-			AddEvidence(player, data, 1.0f, "an inconsistent angle command", true);
+			AddEvidence(player, data, 1.0f, "evidence.antiaim.reason.inconsistent_command", "an inconsistent angle command", true);
 		}
 		else if (historyMismatch && !data.suppressContinuous
 				 && (data.lastMismatchEvidenceCommand < 0
@@ -571,7 +581,7 @@ namespace detection
 			ANTIAIM_DEBUG("%s command %d base/input-history yaw mismatch is %.2f degrees.\n", player->GetName(), found->commandNumber,
 						  found->historyYawDifference);
 			// Fast legitimate mouse movement can create this difference, so it contributes only short-lived supporting evidence.
-			AddEvidence(player, data, 1.0f, "a repeated base and input-history mismatch", true, true);
+			AddEvidence(player, data, 1.0f, "evidence.antiaim.reason.history_mismatch", "a repeated base and input-history mismatch", true, true);
 		}
 		else if (!data.inconsistencyActive && wasInconsistent)
 		{
@@ -585,7 +595,7 @@ namespace detection
 		{
 			ANTIAIM_DEBUG("%s command %d has invalid pitch/roll %.2f/%.2f.\n", player->GetName(), found->commandNumber, found->baseAngles.x,
 						  found->baseAngles.z);
-			AddEvidence(player, data, 2.0f, "invalid pitch or roll", true);
+			AddEvidence(player, data, 2.0f, "evidence.antiaim.reason.invalid_angles", "invalid pitch or roll", true);
 		}
 
 		EvaluateMotion(player, data, *found);

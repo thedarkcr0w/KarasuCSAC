@@ -4,6 +4,7 @@
 #include "clientcvar/client_cvar_value.h"
 #include "common.h"
 #include "karasu/karasu_relay.h"
+#include "localization.h"
 #include "utils/utils.h"
 #include "version_gen.h"
 
@@ -65,7 +66,8 @@ public:
 	void OnSetupMove(MovementPlayer *player, PlayerCommand *command);
 	void OnGameFrame(bool simulating);
 	void OnGameEvent(IGameEvent *event, MovementPlayer *player);
-	void HandleDetection(const char *detection, MovementPlayer *player, std::string_view evidence = {}, bool kickOnly = false);
+	void HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly = false,
+						 bool networkVetoed = false);
 	void OnClientFullyConnect(CPlayerSlot slot);
 	void OnClientSettingsChanged(CPlayerSlot slot);
 	void OnClientDisconnect(CPlayerSlot slot);

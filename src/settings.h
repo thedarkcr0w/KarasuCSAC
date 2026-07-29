@@ -46,6 +46,7 @@ namespace settings
 	const char *GetWebhookRoleId();
 	const char *GetWebhookServerAddress();
 	const char *GetWebhookLogoUrl();
+	const char *GetLanguage();
 
 	// --- Karasu platform integration -------------------------------------------
 	// Relay detections to the Karasu CS2 plugin, which owns the match context, the

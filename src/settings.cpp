@@ -103,6 +103,7 @@ namespace
 												  CUtlString("")};
 		CConVar<CUtlString> webhookLogoUrl {"cs2ac_webhook_logo_url", FCVAR_NONE, "Public HTTPS URL for the logo shown in Discord reports",
 											CUtlString("")};
+		CConVar<CUtlString> language {"cs2ac_language", FCVAR_NONE, "Language used for public messages and Discord reports", CUtlString("en")};
 		CConVar<CUtlString> whitelist {"cs2ac_whitelist", FCVAR_NONE, "SteamID64s that CS2AC may detect but never punish", CUtlString(""),
 									   OnWhitelistChanged};
 
@@ -338,6 +339,11 @@ const char *settings::GetWebhookServerAddress()
 const char *settings::GetWebhookLogoUrl()
 {
 	return configuration ? configuration->webhookLogoUrl.Get().Get() : "";
+}
+
+const char *settings::GetLanguage()
+{
+	return configuration ? configuration->language.Get().Get() : "en";
 }
 
 bool settings::IsKarasuRelayEnabled()

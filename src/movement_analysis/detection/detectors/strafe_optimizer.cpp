@@ -134,7 +134,8 @@ void MovementDetectionService::DetectOptimization(PlayerCommand *pc)
 	// finally check for suspicious yaw accel patterns
 	if (yawAccelPercent > 0.9f)
 	{
-		this->MarkInfraction(MovementDetectionService::Infraction::Type::StrafeHack, "Strafe optimizer detected");
+		this->MarkInfraction(MovementDetectionService::Infraction::Type::StrafeHack,
+							 localization::Format("evidence.autostrafe.optimizer", "Strafe optimizer detected."));
 		this->yawAccelPercent = 0.0f;
 		this->angleFrameHistory.clear();
 		return;

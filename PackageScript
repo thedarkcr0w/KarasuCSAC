@@ -20,10 +20,12 @@ bin_path = os.path.join(plugin_root, 'bin', platform_folder)
 metamod_path = os.path.join(addons_root, 'metamod')
 gamedata_path = os.path.join(plugin_root, 'gamedata')
 licenses_path = os.path.join(plugin_root, 'licenses')
+translations_path = os.path.join(plugin_root, 'translations')
 builder.AddFolder(bin_path)
 builder.AddFolder(metamod_path)
 gamedata_folder = builder.AddFolder(gamedata_path)
 builder.AddFolder(licenses_path)
+translations_folder = builder.AddFolder(translations_path)
 cfg_folder = builder.AddFolder(cfg_root)
 
 task = MMSPlugin.binaries[0]
@@ -37,6 +39,13 @@ builder.AddCopy(
   os.path.join(builder.sourcePath, 'cfg', 'cs2ac.cfg'),
   cfg_folder
 )
+for filename in sorted(os.listdir(os.path.join(builder.sourcePath,
+                                                'translations'))):
+  if filename.endswith('.txt'):
+    builder.AddCopy(
+      os.path.join(builder.sourcePath, 'translations', filename),
+      translations_folder
+    )
 builder.AddCopy(
   os.path.join(builder.sourcePath, 'THIRD_PARTY_NOTICES.md'),
   os.path.join(plugin_root, 'THIRD_PARTY_NOTICES.md')

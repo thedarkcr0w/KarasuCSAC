@@ -309,7 +309,9 @@ void MovementDetectionService::CheckLandingEvents()
 		{
 			this->MarkInfraction(
 				MovementDetectionService::Infraction::Type::BhopHack,
-				tfm::format("%u of %u eligible landings formed one consecutive frame-perfect bhop chain.", maxPerfChain, totalChainEligibleEvents));
+				localization::Format("evidence.bhop.perfect_chain",
+									 "{perfect} of {landings} eligible landings formed one consecutive frame-perfect bhop chain.",
+									 {{"perfect", tfm::format("%u", maxPerfChain)}, {"landings", tfm::format("%u", totalChainEligibleEvents)}}));
 			this->recentLandingEvents.clear();
 			this->bhopDirty = false;
 			return;
@@ -322,9 +324,15 @@ void MovementDetectionService::CheckLandingEvents()
 				&& mostCommonPatternCount >= totalPatternOccurrences * REPETITIVE_PATTERN_THRESHOLD && mostCommonPattern < LOW_PATTERN_THRESHOLD
 				&& settings::IsDetectionEnabled(DetectionType::Bhop))
 			{
-				this->MarkInfraction(MovementDetectionService::Infraction::Type::BhopHack,
-									 tfm::format("%u of %u completed jump patterns repeated %u inputs, with an average of %.2f inputs.",
-												 mostCommonPatternCount, totalPatternOccurrences, mostCommonPattern, averagePattern));
+				this->MarkInfraction(
+					MovementDetectionService::Infraction::Type::BhopHack,
+					localization::Format(
+						"evidence.bhop.repeated_pattern",
+						"{repeated} of {patterns} completed jump patterns repeated {inputs} inputs, with an average of {average} inputs.",
+						{{"repeated", tfm::format("%u", mostCommonPatternCount)},
+						 {"patterns", tfm::format("%u", totalPatternOccurrences)},
+						 {"inputs", tfm::format("%u", mostCommonPattern)},
+						 {"average", tfm::format("%.2f", averagePattern)}}));
 				this->recentLandingEvents.clear();
 				this->bhopDirty = false;
 				return;
@@ -341,10 +349,16 @@ void MovementDetectionService::CheckLandingEvents()
 			&& totalPatternOccurrences >= MIN_SAMPLE_COUNT && totalChainEligibleEvents >= MIN_SAMPLE_COUNT
 			&& settings::IsDetectionEnabled(DetectionType::Hyperscroll))
 		{
-			this->MarkInfraction(MovementDetectionService::Infraction::Type::Hyperscroll,
-								 tfm::format("The player averaged %.2f jump inputs across %u completed landing patterns, while %u of %u "
-											 "eligible landings were frame-perfect (%.2f%%).",
-											 averagePattern, totalPatternOccurrences, numPerfs, totalChainEligibleEvents, perfectRatio * 100.0f));
+			this->MarkInfraction(
+				MovementDetectionService::Infraction::Type::Hyperscroll,
+				localization::Format("evidence.hyperscroll",
+									 "The player averaged {average} jump inputs across {patterns} completed landing patterns, while {perfect} of "
+									 "{landings} eligible landings were frame-perfect ({ratio}%).",
+									 {{"average", tfm::format("%.2f", averagePattern)},
+									  {"patterns", tfm::format("%u", totalPatternOccurrences)},
+									  {"perfect", tfm::format("%u", numPerfs)},
+									  {"landings", tfm::format("%u", totalChainEligibleEvents)},
+									  {"ratio", tfm::format("%.2f", perfectRatio * 100.0f)}}));
 			this->recentLandingEvents.clear();
 			this->bhopDirty = false;
 			return;

@@ -145,8 +145,11 @@ void MovementDetectionService::OnJumpFinish(Jump *jump)
 		|| (suspiciousJumpCount >= MIN_SUSPICIOUS_JUMPS_THRESHOLD && numVeryHighStrafeJumps > 0))
 	{
 		const size_t evaluatedJumpCount = this->recentJumpStatuses.size();
-		std::string details = tfm::format("%d of %zu evaluated jumps matched automated strafe patterns (%.2f%%).", suspiciousJumpCount,
-										  evaluatedJumpCount, (f32)suspiciousJumpCount / (f32)evaluatedJumpCount * 100.0f);
+		localization::Text details = localization::Format(
+			"evidence.autostrafe.jumps", "{suspicious} of {evaluated} evaluated jumps matched automated strafe patterns ({ratio}%).",
+			{{"suspicious", tfm::format("%d", suspiciousJumpCount)},
+			 {"evaluated", tfm::format("%zu", evaluatedJumpCount)},
+			 {"ratio", tfm::format("%.2f", (f32)suspiciousJumpCount / (f32)evaluatedJumpCount * 100.0f)}});
 		this->MarkInfraction(Infraction::Type::StrafeHack, details);
 		this->recentJumpStatuses.clear();
 	}

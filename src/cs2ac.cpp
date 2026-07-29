@@ -1,5 +1,6 @@
 #include "cs2ac.h"
 
+#include "localization.h"
 #include "movement_analysis/detection/movement_detection.h"
 #include "movement_analysis/player_context.h"
 #include "movement_analysis/settings/movement_settings.h"
@@ -37,9 +38,14 @@ namespace
 	// "cs2ac_karasu_test_report reset" clears it. Never touched by real detections.
 	karasu::PlayerVerdict karasuTestLedger;
 
-	void HandleDetectionCallback(const char *detection, MovementPlayer *player, std::string_view evidence)
+	void HandleDetectionCallback(const char *detection, MovementPlayer *player, const localization::Text &evidence)
 	{
 		g_CS2AC.HandleDetection(detection, player, evidence);
+	}
+
+	void HandleNetworkVetoDetectionCallback(const char *detection, MovementPlayer *player, const localization::Text &evidence)
+	{
+		g_CS2AC.HandleDetection(detection, player, evidence, false, true);
 	}
 
 	bool IsKickOnlyDetection(const char *detection)
@@ -458,7 +464,7 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	convarsRegistered = true;
 	MovementDetectionService::InitSvCheatsWatcher();
 	svCheatsWatcherInstalled = true;
-	detectionSystem.Load(HandleDetectionCallback);
+	detectionSystem.Load(HandleDetectionCallback, HandleNetworkVetoDetectionCallback);
 	hooks::Initialize(missing);
 
 	if (!missing.empty())
@@ -602,7 +608,8 @@ void CS2ACPlugin::OnGameEvent(IGameEvent *event, MovementPlayer *player)
 	detectionSystem.OnGameEvent(event, player, globals ? globals->tickcount : 0);
 }
 
-void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, std::string_view evidence, bool kickOnly)
+void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly,
+								  bool networkVetoed)
 {
 	if (!detection || !*detection || !player || player->index < 1 || player->index > MAXPLAYERS)
 	{
@@ -616,7 +623,7 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 		utils::AnnounceDetection(detection, player->GetName(), outcome);
 		if (webhook)
 		{
-			webhook->Report(detection, player, evidence, outcome);
+			webhook->Report(detection, player, evidence.localized, outcome);
 		}
 	};
 	if (steamId)
@@ -626,6 +633,12 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 	else
 	{
 		Msg("[CS2AC] Detected %s on %s (SteamID64 unavailable).\n", detection, playerName.c_str());
+	}
+	if (networkVetoed)
+	{
+		finish(utils::DetectionOutcome::NetworkUnstable);
+		Msg("[CS2AC] No punishment was sent because %s's connection exceeded the safe network limits.\n", playerName.c_str());
+		return;
 	}
 	if (!steamId)
 	{
@@ -644,7 +657,11 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 
 	// Karasu policy runs before the upstream punishment path and takes it over
 	// whenever enforcement is armed, so a detection can never be punished twice.
-	const KarasuOutcome karasu = EvaluateKarasuPolicy(detection, player, steamId, evidence);
+	// The relay carries the English evidence, not the localized one: it is staff
+	// review material on the platform, and it must not change meaning — or blow
+	// the 511-byte command budget on multi-byte glyphs — because a particular game
+	// server happens to be set to another language.
+	const KarasuOutcome karasu = EvaluateKarasuPolicy(detection, player, steamId, evidence.english);
 	if (karasu.handled)
 	{
 		finish(karasu.outcome);
@@ -921,6 +938,7 @@ void CS2ACPlugin::OnConfigLoaded()
 	configLoadFailed = false;
 	lastConfigLoad = std::chrono::steady_clock::now();
 	settings::MarkConfigReloaded();
+	localization::Reload(settings::GetLanguage());
 	if (webhook)
 	{
 		webhook->Reload();
@@ -1252,6 +1270,7 @@ void CS2ACPlugin::CleanupRuntime()
 		MovementDetectionService::CleanupSvCheatsWatcher();
 		svCheatsWatcherInstalled = false;
 	}
+	localization::Shutdown();
 	settings::Shutdown();
 	if (convarsRegistered)
 	{

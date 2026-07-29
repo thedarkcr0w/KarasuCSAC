@@ -3,6 +3,7 @@
 #include "igameevents.h"
 #include "public/networksystem/inetworkmessages.h"
 #include "igameeventsystem.h"
+#include "localization.h"
 #include "sdk/datatypes.h"
 #include "sdk/recipientfilters.h"
 #include "settings.h"
@@ -231,6 +232,14 @@ static std::string EscapeHtml(const char *text)
 	return escaped;
 }
 
+static void ReplaceAll(std::string &value, std::string_view placeholder, std::string_view replacement)
+{
+	for (std::size_t position = 0; (position = value.find(placeholder, position)) != std::string::npos; position += replacement.size())
+	{
+		value.replace(position, placeholder.size(), replacement);
+	}
+}
+
 static std::string detectionHtml;
 static std::chrono::steady_clock::time_point detectionHtmlExpires;
 static bool detectionHtmlTimerRunning;
@@ -322,24 +331,26 @@ static void ShowCenterMessage(std::string message, bool isDetection = false, boo
 	}
 }
 
-static const char *DetectionOutcomeText(utils::DetectionOutcome outcome)
+static std::string DetectionOutcomeText(utils::DetectionOutcome outcome)
 {
 	switch (outcome)
 	{
 		case utils::DetectionOutcome::PunishmentSent:
-			return " and sent the punishment.";
+			return localization::Get("announcement.outcome.punishment_sent", " and sent the punishment.");
 		case utils::DetectionOutcome::Whitelisted:
-			return ", but they are whitelisted.";
+			return localization::Get("announcement.outcome.whitelisted", ", but they are whitelisted.");
 		case utils::DetectionOutcome::PunishmentDisabled:
-			return ", but punishment is disabled.";
+			return localization::Get("announcement.outcome.punishment_disabled", ", but punishment is disabled.");
 		case utils::DetectionOutcome::IdentityUnavailable:
-			return ", but their identity is not ready yet.";
+			return localization::Get("announcement.outcome.identity_unavailable", ", but their identity is not ready yet.");
 		case utils::DetectionOutcome::AlreadyPunished:
-			return " and the punishment was already sent.";
+			return localization::Get("announcement.outcome.already_punished", " and the punishment was already sent.");
 		case utils::DetectionOutcome::CommandTooLong:
-			return ", but the punishment command is too long.";
+			return localization::Get("announcement.outcome.command_too_long", ", but the punishment command is too long.");
 		case utils::DetectionOutcome::CommandServiceUnavailable:
-			return ", but the server command service is unavailable.";
+			return localization::Get("announcement.outcome.command_service_unavailable", ", but the server command service is unavailable.");
+		case utils::DetectionOutcome::NetworkUnstable:
+			return localization::Get("announcement.outcome.network_unstable", ", but no punishment was sent because their connection was unstable.");
 	}
 	return ".";
 }
@@ -351,7 +362,7 @@ void utils::AnnounceDetection(const char *detection, const char *playerName, Det
 		return;
 	}
 
-	const char *outcomeText = DetectionOutcomeText(outcome);
+	const std::string outcomeText = DetectionOutcomeText(outcome);
 	std::string displayDetection = detection;
 	for (char &character : displayDetection)
 	{
@@ -361,11 +372,15 @@ void utils::AnnounceDetection(const char *detection, const char *playerName, Det
 	{
 		const std::string safeChatDetection = EscapeChatMarkup(displayDetection.c_str());
 		const std::string safeChatPlayerName = std::string(1, '\x08') + EscapeChatMarkup(playerName);
+		const std::string chatBody = localization::Format("announcement.detected", "detected {detection} on {player}{outcome}",
+														  {{"detection", "{lime}%s1{default}"}, {"player", "{grey}%s2{default}"}, {"outcome", "%s3"}})
+										 .localized;
+		const std::string chatTemplate = "{red}[CS2AC]{default} " + chatBody;
 		char coloredChat[512];
-		if (CFormat(coloredChat, sizeof(coloredChat), "{red}[CS2AC]{default} detected {lime}%s1{default} on {grey}%s2{default}%s3"))
+		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 		{
 			CBroadcastRecipientFilter filter;
-			ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, safeChatDetection.c_str(), safeChatPlayerName.c_str(), outcomeText, "");
+			ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, safeChatDetection.c_str(), safeChatPlayerName.c_str(), outcomeText.c_str(), "");
 		}
 	}
 
@@ -376,23 +391,22 @@ void utils::AnnounceDetection(const char *detection, const char *playerName, Det
 
 	const std::string safeDetection = EscapeHtml(displayDetection.c_str());
 	const std::string safePlayerName = EscapeHtml(playerName);
-	char message[1024];
-	snprintf(message, sizeof(message),
-			 "<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>detected </span>"
-			 "<span color='#00FF00'>%s</span><span color='#FFFFFF'> on </span><span color='#B0B0B0'>%s</span>"
-			 "<span color='#FFFFFF'>%s</span></span>",
-			 safeDetection.c_str(), safePlayerName.c_str(), outcomeText);
-
-	ShowCenterMessage(message, true);
+	std::string centerBody = EscapeHtml(localization::Get("announcement.detected", "detected {detection} on {player}{outcome}").c_str());
+	ReplaceAll(centerBody, "{detection}", "<span color='#00FF00'>" + safeDetection + "</span>");
+	ReplaceAll(centerBody, "{player}", "<span color='#B0B0B0'>" + safePlayerName + "</span>");
+	ReplaceAll(centerBody, "{outcome}", EscapeHtml(outcomeText.c_str()));
+	ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + centerBody + "</span></span>", true);
 }
 
 void utils::AnnounceTest()
 {
 	static constexpr const char *text = "This is a test. No player was detected or punished.";
+	const std::string localized = localization::Get("announcement.test", text);
 	if (settings::ShowChatAnnouncements())
 	{
+		const std::string chatTemplate = "{red}[CS2AC]{default} " + localized;
 		char coloredChat[256];
-		if (CFormat(coloredChat, sizeof(coloredChat), "{red}[CS2AC]{default} This is a test. No player was detected or punished."))
+		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 		{
 			CBroadcastRecipientFilter filter;
 			ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "", "", "", "");
@@ -405,8 +419,8 @@ void utils::AnnounceTest()
 
 	if (settings::ShowCenterAnnouncements())
 	{
-		ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> "
-						  "<span color='#FFFFFF'>This is a test. No player was detected or punished.</span></span>");
+		ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + EscapeHtml(localized.c_str())
+						  + "</span></span>");
 	}
 	else
 	{
@@ -417,17 +431,19 @@ void utils::AnnounceTest()
 
 void utils::AnnounceWatermark()
 {
+	const std::string chatBody = localization::Watermark({{"author", "{grey}%s1{default}"}}).localized;
+	const std::string chatTemplate = "{red}[CS2AC]{default} " + chatBody;
 	char coloredChat[256];
-	if (CFormat(coloredChat, sizeof(coloredChat), "{red}[CS2AC]{default} This server is protected by {grey}karola3vax{default}'s anti-cheat."))
+	if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 	{
 		CBroadcastRecipientFilter filter;
-		ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "", "", "", "");
+		ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "karola3vax", "", "", "");
 	}
 
-	ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> "
-					  "<span color='#FFFFFF'>This server is protected by </span><span color='#B0B0B0'>karola3vax</span>"
-					  "<span color='#FFFFFF'>&#39;s anti-cheat.</span></span>",
-					  false, true);
+	std::string centerBody = EscapeHtml(localization::Watermark().localized.c_str());
+	ReplaceAll(centerBody, "{author}", "<span color='#B0B0B0'>karola3vax</span>");
+	ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + centerBody + "</span></span>", false,
+					  true);
 }
 
 void utils::ResetDetectionAnnouncement()

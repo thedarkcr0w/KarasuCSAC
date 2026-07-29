@@ -102,7 +102,9 @@ namespace detection
 		{
 			if (announce)
 			{
-				announce("NAMECHANGER", player, tfm::format("%zu visible name changes occurred within one minute.", data.changes.size()));
+				announce("NAMECHANGER", player,
+						 localization::Format("evidence.namechanger", "{changes} visible name changes occurred within one minute.",
+											  {{"changes", tfm::format("%zu", data.changes.size())}}));
 			}
 			data.changes.clear();
 		}

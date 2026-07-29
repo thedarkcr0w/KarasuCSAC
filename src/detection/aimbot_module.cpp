@@ -383,12 +383,18 @@ namespace detection
 		{
 			if (announce)
 			{
-				const std::string details =
+				const localization::Text details =
 					matchedRule == AimbotRule::SnapReturn
-						? tfm::format("%zu snap-hit incidents reached the threshold; the latest was a %.2f-degree snap-return.", incidents.size(),
-									  largestSnap)
-						: tfm::format("%zu snap-hit incidents reached the threshold; latest snap %.2f degrees, target error %.2f -> %.2f degrees.",
-									  incidents.size(), largestSnap, bestBefore, bestAfter);
+						? localization::Format("evidence.aimbot.snap_return",
+											   "{incidents} snap-hit incidents reached the threshold; the latest was a {snap}-degree snap-return.",
+											   {{"incidents", tfm::format("%zu", incidents.size())}, {"snap", tfm::format("%.2f", largestSnap)}})
+						: localization::Format("evidence.aimbot.convergence",
+											   "{incidents} snap-hit incidents reached the threshold; latest snap {snap} degrees, target error "
+											   "{before} -> {after} degrees.",
+											   {{"incidents", tfm::format("%zu", incidents.size())},
+												{"snap", tfm::format("%.2f", largestSnap)},
+												{"before", tfm::format("%.2f", bestBefore)},
+												{"after", tfm::format("%.2f", bestAfter)}});
 				announce("AIMBOT", attacker, details);
 			}
 			incidents.clear();

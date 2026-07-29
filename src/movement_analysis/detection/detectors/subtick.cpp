@@ -179,9 +179,12 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 	}
 	if (this->invalidCommandTimes.size() >= SUBTICK_INVALID_COMMAND_THRESHOLD)
 	{
-		this->MarkInfraction(Infraction::Type::InvalidInput,
-							 tfm::format("%zu commands had movement button changes without matching subtick records within %.1f seconds.",
-										 this->invalidCommandTimes.size(), SUBTICK_INVALID_COMMAND_WINDOW));
+		this->MarkInfraction(
+			Infraction::Type::InvalidInput,
+			localization::Format("evidence.invalid_input",
+								 "{commands} commands had movement button changes without matching subtick records within {seconds} seconds.",
+								 {{"commands", tfm::format("%zu", this->invalidCommandTimes.size())},
+								  {"seconds", tfm::format("%.1f", SUBTICK_INVALID_COMMAND_WINDOW)}}));
 		this->invalidCommandTimes.clear();
 	}
 
@@ -193,9 +196,12 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 	// Repeated same-time button aliases with angle changes become Subtick Spam evidence.
 	if (this->suspiciousSubtickMoveTimes.size() >= SUBTICK_SUSPICIOUS_MOVES_THRESHOLD)
 	{
-		this->MarkInfraction(Infraction::Type::SubtickSpam,
-							 tfm::format("%zu commands contained repeated same-time button aliases with angle changes within %.1f seconds.",
-										 this->suspiciousSubtickMoveTimes.size(), SUBTICK_SUSPICIOUS_MOVES_WINDOW));
+		this->MarkInfraction(
+			Infraction::Type::SubtickSpam,
+			localization::Format("evidence.subtick_spam",
+								 "{commands} commands contained repeated same-time button aliases with angle changes within {seconds} seconds.",
+								 {{"commands", tfm::format("%zu", this->suspiciousSubtickMoveTimes.size())},
+								  {"seconds", tfm::format("%.1f", SUBTICK_SUSPICIOUS_MOVES_WINDOW)}}));
 		this->suspiciousSubtickMoveTimes.clear();
 	}
 
@@ -214,11 +220,14 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 		f32 ratio = (f32)this->zeroWhenCommandTimes.size() / (f32)this->numCommandsWithSubtickInputs.size();
 		if (ratio >= SUBTICK_ZERO_WHEN_RATIO_THRESHOLD)
 		{
-			std::string details = tfm::format("%zu of %zu commands with subtick input had zero timing (%.1f%%).", this->zeroWhenCommandTimes.size(),
-											  this->numCommandsWithSubtickInputs.size(), ratio * 100.0f);
+			localization::Text details =
+				localization::Format("evidence.desubticking", "{zero} of {commands} commands with subtick input had zero timing ({ratio}%).",
+									 {{"zero", tfm::format("%zu", this->zeroWhenCommandTimes.size())},
+									  {"commands", tfm::format("%zu", this->numCommandsWithSubtickInputs.size())},
+									  {"ratio", tfm::format("%.1f", ratio * 100.0f)}});
 			if (cs2ac_subtick_debug.GetBool())
 			{
-				Msg("[CS2AC Desubticking] Player slot %d: %s\n", this->player->GetPlayerSlot().Get(), details.c_str());
+				Msg("[CS2AC Desubticking] Player slot %d: %s\n", this->player->GetPlayerSlot().Get(), details.english.c_str());
 			}
 			this->MarkInfraction(Infraction::Type::Desubtick, details);
 			this->zeroWhenCommandTimes.clear();

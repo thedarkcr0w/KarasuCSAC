@@ -1,5 +1,6 @@
 #include "detection/detection_system.h"
 
+#include "gametrace.h"
 #include "igameevents.h"
 #include "movement_analysis/player_context.h"
 #include "movement/movement.h"
@@ -386,6 +387,7 @@ namespace detection
 		}
 		shot->hurtSeen = true;
 		shot->victimIndex = victim->index;
+		shot->headshot = event->GetInt("hitgroup", HITGROUP_GENERIC) == HITGROUP_HEAD;
 		return shot;
 	}
 
@@ -411,6 +413,8 @@ namespace detection
 		}
 		shot->deathSeen = true;
 		shot->victimIndex = victim->index;
+		shot->wallbang = event->GetInt("penetrated", 0) > 0;
+		shot->throughSmoke = event->GetBool("thrusmoke", false);
 		return shot;
 	}
 
@@ -487,10 +491,10 @@ namespace detection
 		return playerData[playerIndex].shots;
 	}
 
-	void DetectionSystem::Load(AnnounceCallback announce)
+	void DetectionSystem::Load(AnnounceCallback announce, AnnounceCallback announceNetworkVeto)
 	{
 		shots.Reset();
-		doubletap.Load(announce);
+		doubletap.Load(announce, announceNetworkVeto);
 		silentAim.Load(announce, &shots);
 		aimbot.Load(announce, &shots);
 		aimlock.Load(announce, &shots);
@@ -557,6 +561,10 @@ namespace detection
 			return;
 		}
 		shots.OnProcessUsercmds(player, commands, numCommands);
+		if (settings::IsDetectionEnabled(DetectionType::Doubletap))
+		{
+			doubletap.OnProcessUsercmds(player, commands, numCommands);
+		}
 		if (settings::IsDetectionEnabled(DetectionType::Aimbot))
 		{
 			aimbot.OnProcessUsercmds(player, commands, numCommands);
@@ -597,6 +605,10 @@ namespace detection
 			return;
 		}
 		shots.CaptureFrame(currentTick);
+		if (settings::IsDetectionEnabled(DetectionType::Doubletap))
+		{
+			doubletap.OnGameFrame();
+		}
 		if (settings::IsDetectionEnabled(DetectionType::Aimbot))
 		{
 			aimbot.OnGameFrame(currentTick);
@@ -644,7 +656,7 @@ namespace detection
 		{
 			if (settings::IsDetectionEnabled(DetectionType::Doubletap))
 			{
-				doubletap.OnWeaponFire(player, currentTick);
+				doubletap.OnWeaponFire(event, player, currentTick);
 			}
 			if (ShotRecord *shot = shots.OnWeaponFire(event, player, currentTick))
 			{
