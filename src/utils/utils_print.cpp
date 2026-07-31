@@ -357,6 +357,14 @@ static std::string DetectionOutcomeText(utils::DetectionOutcome outcome)
 	return ".";
 }
 
+// The tag players read in chat and on the center screen. It is deliberately not the
+// tag the console Msg() lines use: the Karasu platform parses "[CS2AC]" out of the
+// server console log to drive detections and autobans, so the console keeps upstream's
+// tag while everything a player actually sees is branded as ours.
+static constexpr const char *inGameChatTag = "{red}[KarasuAC]{default} ";
+static constexpr const char *inGameCenterOpen = "<span class='fontSize-l'><span color='#FF0000'>[KarasuAC]</span> <span color='#FFFFFF'>";
+static constexpr const char *inGameCenterClose = "</span></span>";
+
 void utils::AnnounceDetection(const char *detection, const char *playerName, DetectionOutcome outcome)
 {
 	if (!detection || !playerName)
@@ -377,7 +385,7 @@ void utils::AnnounceDetection(const char *detection, const char *playerName, Det
 		const std::string chatBody = localization::Format("announcement.detected", "detected {detection} on {player}{outcome}",
 														  {{"detection", "{lime}%s1{default}"}, {"player", "{grey}%s2{default}"}, {"outcome", "%s3"}})
 										 .localized;
-		const std::string chatTemplate = "{red}[CS2AC]{default} " + chatBody;
+		const std::string chatTemplate = inGameChatTag + chatBody;
 		char coloredChat[512];
 		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 		{
@@ -397,7 +405,7 @@ void utils::AnnounceDetection(const char *detection, const char *playerName, Det
 	ReplaceAll(centerBody, "{detection}", "<span color='#00FF00'>" + safeDetection + "</span>");
 	ReplaceAll(centerBody, "{player}", "<span color='#B0B0B0'>" + safePlayerName + "</span>");
 	ReplaceAll(centerBody, "{outcome}", EscapeHtml(outcomeText.c_str()));
-	ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + centerBody + "</span></span>", true);
+	ShowCenterMessage(inGameCenterOpen + centerBody + inGameCenterClose, true);
 }
 
 void utils::AnnounceTest()
@@ -406,7 +414,7 @@ void utils::AnnounceTest()
 	const std::string localized = localization::Get("announcement.test", text);
 	if (settings::ShowChatAnnouncements())
 	{
-		const std::string chatTemplate = "{red}[CS2AC]{default} " + localized;
+		const std::string chatTemplate = inGameChatTag + localized;
 		char coloredChat[256];
 		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 		{
@@ -421,8 +429,7 @@ void utils::AnnounceTest()
 
 	if (settings::ShowCenterAnnouncements())
 	{
-		ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + EscapeHtml(localized.c_str())
-						  + "</span></span>");
+		ShowCenterMessage(inGameCenterOpen + EscapeHtml(localized.c_str()) + inGameCenterClose);
 	}
 	else
 	{
@@ -434,7 +441,7 @@ void utils::AnnounceTest()
 void utils::AnnounceWatermark()
 {
 	const std::string chatBody = localization::Watermark({{"author", "{grey}%s1{default}"}}).localized;
-	const std::string chatTemplate = "{red}[CS2AC]{default} " + chatBody;
+	const std::string chatTemplate = inGameChatTag + chatBody;
 	char coloredChat[256];
 	if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
 	{
@@ -444,8 +451,7 @@ void utils::AnnounceWatermark()
 
 	std::string centerBody = EscapeHtml(localization::Watermark().localized.c_str());
 	ReplaceAll(centerBody, "{author}", "<span color='#B0B0B0'>karola3vax</span>");
-	ShowCenterMessage("<span class='fontSize-l'><span color='#FF0000'>[CS2AC]</span> <span color='#FFFFFF'>" + centerBody + "</span></span>", false,
-					  true, 3);
+	ShowCenterMessage(inGameCenterOpen + centerBody + inGameCenterClose, false, true, 3);
 }
 
 void utils::ResetDetectionAnnouncement()

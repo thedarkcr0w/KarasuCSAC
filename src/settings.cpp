@@ -140,7 +140,7 @@ namespace
 										   "Karasu enforcement: 0 report only, 1 kick locally, 2 kick and ask the platform to ban", CUtlString("2")};
 		CConVar<CUtlString> karasuKickCommand {"cs2ac_karasu_kick_command", FCVAR_NONE,
 											   "Command used to remove a player the Karasu policy has judged a cheater",
-											   CUtlString("kickid {userid} Karasu Anti-Cheat")};
+											   CUtlString("kickid {userid} [KarasuAC] {detection}")};
 		CConVar<CUtlString> karasuMinConfidence {"cs2ac_karasu_min_confidence", FCVAR_NONE,
 												 "Confidence a detection must reach to count toward corroboration (0-100)", CUtlString("72")};
 		CConVar<CUtlString> karasuSoloBanConfidence {"cs2ac_karasu_solo_ban_confidence", FCVAR_NONE,
