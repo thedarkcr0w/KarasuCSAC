@@ -55,8 +55,31 @@ extern IClientCvarValue *g_pClientCvarValue;
 
 static constexpr auto SV_CHEATS_MAX_PROPAGATION_DELAY = std::chrono::seconds(30);
 
+static_function localization::Text InvalidNumber(const char *cvar)
+{
+	return localization::Format("evidence.invalid_cvar.invalid_number", "{cvar} did not return a valid finite number.", {{"cvar", cvar}});
+}
+
+static_function localization::Text AboveMaximum(const char *cvar, double value, const char *maximum)
+{
+	return localization::Format("evidence.invalid_cvar.above_maximum", "{cvar} is {value}, but the maximum allowed value is {maximum}.",
+								{{"cvar", cvar}, {"value", tfm::format("%.6g", value)}, {"maximum", maximum}});
+}
+
+static_function localization::Text OutsideRange(const char *cvar, double value, const char *minimum, const char *maximum)
+{
+	return localization::Format("evidence.invalid_cvar.outside_range", "{cvar} is {value}, but it must be between {minimum} and {maximum}.",
+								{{"cvar", cvar}, {"value", tfm::format("%.6g", value)}, {"minimum", minimum}, {"maximum", maximum}});
+}
+
+static_function localization::Text MustEqual(const char *cvar, double value, const char *expected)
+{
+	return localization::Format("evidence.invalid_cvar.must_equal", "{cvar} is {value}, but it must be {expected}.",
+								{{"cvar", cvar}, {"value", tfm::format("%.6g", value)}, {"expected", expected}});
+}
+
 static_global const char *cvarNames[] = {
-	"m_yaw",          // Client-controlled, but unsafe outside the accepted range.
+	// "m_yaw",       // Disabled: this was kick-only, but legitimate turn binds temporarily use high values.
 	"fps_max",        // Expected to stay at or above the server tick rate.
 	"sv_cheats",      // replicated
 	"sensitivity",    // capped (0.0001f => 8.0f)
@@ -71,7 +94,7 @@ static_global const char *cvarNames[] = {
 
 static_global const char *userInfoCvarNames[] = {
 	"sensitivity",
-	"m_yaw",
+	// "m_yaw", // Disabled with the queried check above; keep its validation code in case the check returns later.
 };
 
 static_global auto cheatCvarCheckerGraceUntil = (std::chrono::steady_clock::time_point::min)();
@@ -156,7 +179,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		return;
 	}
 	bool invalid = false;
-	auto markInvalid = [&](const std::string &reason, bool kickOnly = false)
+	auto markInvalid = [&](const localization::Text &reason, bool kickOnly = false)
 	{
 		if (CS2AC_STREQI(pszCvarName, "m_yaw") || CS2AC_STREQI(pszCvarName, "sensitivity"))
 		{
@@ -172,18 +195,18 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 	{
 		if (!utils::IsNumeric(pszCvarValue))
 		{
-			markInvalid("m_yaw did not return a valid finite number.");
+			markInvalid(InvalidNumber("m_yaw"));
 		}
 		else if (const f64 yaw = atof(pszCvarValue); yaw > MAXIMUM_M_YAW)
 		{
-			markInvalid(tinyformat::format("m_yaw is %.6g, but the maximum allowed value is 0.3.", yaw), true);
+			markInvalid(AboveMaximum("m_yaw", yaw, "0.3"), true);
 		}
 	}
 	else if (CS2AC_STREQI(pszCvarName, "fps_max"))
 	{
 		if (!utils::IsNumeric(pszCvarValue))
 		{
-			markInvalid("fps_max did not return a valid finite number.");
+			markInvalid(InvalidNumber("fps_max"));
 		}
 		else
 		{
@@ -191,7 +214,10 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 			player->movementDetection->currentMaxFps = fps;
 			if (fps > 0.0f && fps < MINIMUM_FPS_MAX)
 			{
-				markInvalid(tinyformat::format("fps_max is %.6g, but it must be at least 64 or 0 for unlimited.", fps), true);
+				markInvalid(localization::Format("evidence.invalid_cvar.fps_max",
+												 "fps_max is {value}, but it must be at least 64 or 0 for unlimited.",
+												 {{"value", tfm::format("%.6g", fps)}}),
+							true);
 			}
 		}
 	}
@@ -206,7 +232,8 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		const bool disabled = CS2AC_STREQI(pszCvarValue, "false") || (numeric && atof(pszCvarValue) == 0.0);
 		if (!disabled)
 		{
-			markInvalid("sv_cheats is enabled or invalid on the client while it is disabled on the server.");
+			markInvalid(localization::Format("evidence.invalid_cvar.sv_cheats",
+											 "sv_cheats is enabled or invalid on the client while it is disabled on the server."));
 		}
 	}
 	else if (CS2AC_STREQI(pszCvarName, "sensitivity"))
@@ -216,8 +243,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		// The actual upper bound is 8.0f but this is to account for possible future updates.
 		if (!numeric || sens < 0.0001f || sens > 20.0f)
 		{
-			std::string reason = numeric ? tinyformat::format("sensitivity is %.6g, but it must be between 0.0001 and 20.", sens)
-										 : "sensitivity did not return a valid finite number.";
+			localization::Text reason = numeric ? OutsideRange("sensitivity", sens, "0.0001", "20") : InvalidNumber("sensitivity");
 			markInvalid(reason);
 		}
 	}
@@ -229,7 +255,9 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		}
 		if (!CS2AC_STREQI(pszCvarValue, "0") && !CS2AC_STREQI(pszCvarValue, "false"))
 		{
-			std::string reason = std::string(pszCvarName) + " is enabled on client despite sv_cheats being disabled on server";
+			localization::Text reason =
+				localization::Format("evidence.invalid_cvar.enabled_without_cheats",
+									 "{cvar} is enabled on the client despite sv_cheats being disabled on the server.", {{"cvar", pszCvarName}});
 			markInvalid(reason);
 		}
 	}
@@ -241,7 +269,9 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		}
 		if (CS2AC_STREQI(pszCvarValue, "0") || CS2AC_STREQI(pszCvarValue, "false"))
 		{
-			std::string reason = "cl_drawhud is disabled on client despite sv_cheats being disabled on server";
+			localization::Text reason =
+				localization::Format("evidence.invalid_cvar.disabled_without_cheats",
+									 "{cvar} is disabled on the client despite sv_cheats being disabled on the server.", {{"cvar", "cl_drawhud"}});
 			markInvalid(reason);
 		}
 	}
@@ -254,8 +284,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		const f64 fovValue = utils::IsNumeric(pszCvarValue) ? atof(pszCvarValue) : NAN;
 		if (!std::isfinite(fovValue) || fovValue != 0.0f)
 		{
-			std::string reason = std::isfinite(fovValue) ? tinyformat::format("fov_cs_debug is %.6g, but it must be 0.", fovValue)
-														 : "fov_cs_debug did not return a valid finite number.";
+			localization::Text reason = std::isfinite(fovValue) ? MustEqual("fov_cs_debug", fovValue, "0") : InvalidNumber("fov_cs_debug");
 			markInvalid(reason);
 		}
 	}
@@ -265,8 +294,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		const f64 value = numeric ? atof(pszCvarValue) : 0.0;
 		if (!numeric || value != 89.0)
 		{
-			std::string reason = numeric ? tinyformat::format("cl_pitchdown is %.6g, but it must be 89.", value)
-										 : "cl_pitchdown did not return a valid finite number.";
+			localization::Text reason = numeric ? MustEqual("cl_pitchdown", value, "89") : InvalidNumber("cl_pitchdown");
 			markInvalid(reason);
 		}
 	}
@@ -276,8 +304,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		const f64 value = numeric ? atof(pszCvarValue) : 0.0;
 		if (!numeric || value != 89.0)
 		{
-			std::string reason =
-				numeric ? tinyformat::format("cl_pitchup is %.6g, but it must be 89.", value) : "cl_pitchup did not return a valid finite number.";
+			localization::Text reason = numeric ? MustEqual("cl_pitchup", value, "89") : InvalidNumber("cl_pitchup");
 			markInvalid(reason);
 		}
 	}
@@ -287,8 +314,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 		const f64 value = numeric ? atof(pszCvarValue) : 0.0;
 		if (!numeric || value != 210.0)
 		{
-			std::string reason =
-				numeric ? tinyformat::format("cl_yawspeed is %.6g, but it must be 210.", value) : "cl_yawspeed did not return a valid finite number.";
+			localization::Text reason = numeric ? MustEqual("cl_yawspeed", value, "210") : InvalidNumber("cl_yawspeed");
 			markInvalid(reason);
 		}
 	}
@@ -296,7 +322,7 @@ static_function void ValidateQueriedCvar(CPlayerSlot nSlot, ECvarValueStatus eSt
 	{
 		if (CS2AC_STREQI(pszCvarName, "m_yaw") || CS2AC_STREQI(pszCvarName, "sensitivity"))
 		{
-			player->movementDetection->MarkCvarSource(pszCvarName, "", false, false);
+			player->movementDetection->MarkCvarSource(pszCvarName, {}, false, false);
 		}
 		else
 		{
@@ -318,16 +344,15 @@ static_function void CheckUserInfoCvars(CS2ACPlayer *player)
 		{
 			if (!utils::IsNumeric(value))
 			{
-				player->movementDetection->MarkCvarSource(name, "m_yaw did not return a valid finite number.", true, true);
+				player->movementDetection->MarkCvarSource(name, InvalidNumber("m_yaw"), true, true);
 			}
 			else if (const f64 yaw = atof(value); yaw > MAXIMUM_M_YAW)
 			{
-				player->movementDetection->MarkCvarSource(name, tinyformat::format("m_yaw is %.6g, but the maximum allowed value is 0.3.", yaw), true,
-														  true, true);
+				player->movementDetection->MarkCvarSource(name, AboveMaximum("m_yaw", yaw, "0.3"), true, true, true);
 			}
 			else
 			{
-				player->movementDetection->MarkCvarSource(name, "", false, true);
+				player->movementDetection->MarkCvarSource(name, {}, false, true);
 			}
 		}
 		else if (CS2AC_STREQI(name, "sensitivity"))
@@ -337,13 +362,12 @@ static_function void CheckUserInfoCvars(CS2ACPlayer *player)
 			// The actual upper bound is 8.0f but this is to account for possible future updates.
 			if (!numeric || sens < 0.0001f || sens > 20.0f)
 			{
-				std::string reason = numeric ? tinyformat::format("sensitivity is %.6g, but it must be between 0.0001 and 20.", sens)
-											 : "sensitivity did not return a valid finite number.";
+				localization::Text reason = numeric ? OutsideRange("sensitivity", sens, "0.0001", "20") : InvalidNumber("sensitivity");
 				player->movementDetection->MarkCvarSource(name, reason, true, true);
 			}
 			else
 			{
-				player->movementDetection->MarkCvarSource(name, "", false, true);
+				player->movementDetection->MarkCvarSource(name, {}, false, true);
 			}
 		}
 	}
@@ -358,18 +382,30 @@ static_function f64 CheckClientCvars(CPlayerUserId userID)
 	}
 	if (!player->movementDetection->ShouldCheckClientCvars())
 	{
+		player->movementDetection->cvarQueryIndex = 0;
+		player->movementDetection->cvarCycleInterval = 0.0;
 		return RandomFloat(INTEGRITY_CHECK_MIN_INTERVAL, INTEGRITY_CHECK_MAX_INTERVAL);
 	}
-	CheckUserInfoCvars(player);
-	if (!g_pClientCvarValue)
+	auto *detection = player->movementDetection;
+	if (detection->cvarQueryIndex >= std::size(cvarNames))
 	{
-		return RandomFloat(INTEGRITY_CHECK_MIN_INTERVAL, INTEGRITY_CHECK_MAX_INTERVAL);
+		detection->cvarQueryIndex = 0;
 	}
-	for (auto &name : cvarNames)
+	if (detection->cvarQueryIndex == 0)
 	{
-		g_pClientCvarValue->QueryCvarValue(player->GetPlayerSlot(), name, ValidateQueriedCvar);
+		CheckUserInfoCvars(player);
+		detection->cvarCycleInterval = RandomFloat(INTEGRITY_CHECK_MIN_INTERVAL, INTEGRITY_CHECK_MAX_INTERVAL);
 	}
-	return RandomFloat(INTEGRITY_CHECK_MIN_INTERVAL, INTEGRITY_CHECK_MAX_INTERVAL);
+	if (g_pClientCvarValue)
+	{
+		g_pClientCvarValue->QueryCvarValue(player->GetPlayerSlot(), cvarNames[detection->cvarQueryIndex], ValidateQueriedCvar);
+	}
+	++detection->cvarQueryIndex;
+	if (detection->cvarQueryIndex == std::size(cvarNames))
+	{
+		detection->cvarQueryIndex = 0;
+	}
+	return detection->cvarCycleInterval / std::size(cvarNames);
 }
 
 void MovementDetectionService::InitCvarMonitor()

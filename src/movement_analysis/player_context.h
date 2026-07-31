@@ -68,6 +68,7 @@ public:
 
 private:
 	f64 lastTeleportTime {};
+	bool jumpAnalysisActive {};
 };
 
 class CS2ACPlayerManager : public MovementPlayerManager

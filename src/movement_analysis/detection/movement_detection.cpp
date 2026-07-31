@@ -48,6 +48,10 @@ void MovementDetectionService::Reset()
 {
 	currentMaxFps = 0.0f;
 	cvarMonitorStarted = false;
+	cvarQueryIndex = 0;
+	cvarCycleInterval = 0.0;
+	nullsFramerateBuffer.reserve(maxNullInputEvents);
+	nullsUnderlapBuffer.reserve(maxNullInputEvents);
 	invalidCvarLatches.clear();
 	invalidQueriedCvars.clear();
 	invalidUserInfoCvars.clear();
@@ -153,7 +157,7 @@ void MovementDetectionService::ClearDetectionBuffers()
 	yawAccelPercent = 0.0f;
 }
 
-void MovementDetectionService::MarkInvalidCvar(const char *cvarName, const std::string &reason, bool kickOnly)
+void MovementDetectionService::MarkInvalidCvar(const char *cvarName, const localization::Text &reason, bool kickOnly)
 {
 	RefreshSettings();
 	if (!cvarName)
@@ -162,7 +166,7 @@ void MovementDetectionService::MarkInvalidCvar(const char *cvarName, const std::
 	}
 	if (invalidCvarLatches.emplace(cvarName).second)
 	{
-		INVALID_CVAR_DEBUG("%s marked %s invalid and armed its latch: %s\n", player->GetName(), cvarName, reason.c_str());
+		INVALID_CVAR_DEBUG("%s marked %s invalid and armed its latch: %s\n", player->GetName(), cvarName, reason.english.c_str());
 		MarkInfraction(Infraction::Type::InvalidCvar, reason, kickOnly);
 	}
 	else
@@ -179,7 +183,7 @@ void MovementDetectionService::MarkValidCvar(const char *cvarName)
 	}
 }
 
-void MovementDetectionService::MarkCvarSource(const char *cvarName, const std::string &reason, bool invalid, bool userInfo, bool kickOnly)
+void MovementDetectionService::MarkCvarSource(const char *cvarName, const localization::Text &reason, bool invalid, bool userInfo, bool kickOnly)
 {
 	auto &source = userInfo ? invalidUserInfoCvars : invalidQueriedCvars;
 	if (invalid)
@@ -196,7 +200,7 @@ void MovementDetectionService::MarkCvarSource(const char *cvarName, const std::s
 	}
 }
 
-void MovementDetectionService::MarkInfraction(Infraction::Type type, const std::string &reason, bool kickOnly)
+void MovementDetectionService::MarkInfraction(Infraction::Type type, const localization::Text &reason, bool kickOnly)
 {
 	RefreshSettings();
 	const auto index = static_cast<u8>(type);

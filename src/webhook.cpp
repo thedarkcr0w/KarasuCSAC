@@ -1,8 +1,10 @@
 #include "webhook.h"
 
+#include "localization.h"
 #include "movement_analysis/player_context.h"
 #include "settings.h"
 #include "utils/utils.h"
+#include "version_gen.h"
 
 #include <charconv>
 #include <ctime>
@@ -88,26 +90,32 @@ namespace
 		return value;
 	}
 
-	const char *OutcomeText(utils::DetectionOutcome outcome)
+	std::string OutcomeText(utils::DetectionOutcome outcome)
 	{
 		switch (outcome)
 		{
 			case utils::DetectionOutcome::PunishmentSent:
-				return "The configured punishment command was sent.";
+				return localization::Get("webhook.outcome.punishment_sent", "The configured punishment command was sent.");
 			case utils::DetectionOutcome::Whitelisted:
-				return "The player is whitelisted, so no punishment command was sent.";
+				return localization::Get("webhook.outcome.whitelisted", "The player is whitelisted, so no punishment command was sent.");
 			case utils::DetectionOutcome::PunishmentDisabled:
-				return "No punishment was sent because this punishment command is disabled.";
+				return localization::Get("webhook.outcome.punishment_disabled",
+										 "No punishment was sent because this punishment command is disabled.");
 			case utils::DetectionOutcome::IdentityUnavailable:
-				return "No punishment was sent because the player's identity was not ready.";
+				return localization::Get("webhook.outcome.identity_unavailable",
+										 "No punishment was sent because the player's identity was not ready.");
 			case utils::DetectionOutcome::AlreadyPunished:
-				return "The player was already punished, so no duplicate command was sent.";
+				return localization::Get("webhook.outcome.already_punished", "The player was already punished, so no duplicate command was sent.");
 			case utils::DetectionOutcome::CommandTooLong:
-				return "No punishment was sent because the configured command is too long.";
+				return localization::Get("webhook.outcome.command_too_long", "No punishment was sent because the configured command is too long.");
 			case utils::DetectionOutcome::CommandServiceUnavailable:
-				return "No punishment was sent because the server command service is unavailable.";
+				return localization::Get("webhook.outcome.command_service_unavailable",
+										 "No punishment was sent because the server command service is unavailable.");
+			case utils::DetectionOutcome::NetworkUnstable:
+				return localization::Get("webhook.outcome.network_unstable",
+										 "No punishment was sent because the player's connection exceeded the safe network limits.");
 		}
-		return "No punishment outcome was available.";
+		return localization::Get("webhook.outcome.unavailable", "No punishment outcome was available.");
 	}
 
 	std::string CompleteSentence(std::string value)
@@ -283,7 +291,7 @@ void WebhookService::Report(const char *detection, MovementPlayer *player, std::
 	}
 	ReportData report;
 	report.detection = detection;
-	report.playerName = player->GetName() ? player->GetName() : "Unknown player";
+	report.playerName = player->GetName() ? player->GetName() : localization::Get("webhook.unknown_player", "Unknown player");
 	report.evidence = evidence;
 	report.steamId = player->GetSteamId64(false);
 	report.outcome = outcome;
@@ -316,9 +324,9 @@ void WebhookService::Test()
 		queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
 	}
 	ReportData report;
-	report.detection = "WEBHOOK TEST";
-	report.playerName = "Webhook test";
-	report.evidence = "This is a harmless test report. No detection or punishment was created.";
+	report.detection = localization::Get("webhook.test_detection", "WEBHOOK TEST");
+	report.playerName = localization::Get("webhook.test_player", "Webhook test");
+	report.evidence = localization::Get("webhook.test_evidence", "This is a harmless test report. No detection or punishment was created.");
 	report.outcome = utils::DetectionOutcome::PunishmentDisabled;
 	report.avatarResolved = true;
 	queue.push_back(std::move(report));
@@ -575,10 +583,11 @@ std::string WebhookService::BuildPayload(const ReportData &report)
 	const std::string name = Limit(MarkdownEscape(report.playerName), 240);
 	const std::string playerValue =
 		report.steamId ? tfm::format("[%s](https://steamcommunity.com/profiles/%llu)", name, static_cast<unsigned long long>(report.steamId)) : name;
-	const std::string steamIdValue =
-		report.steamId ? tfm::format("||%llu||", static_cast<unsigned long long>(report.steamId)) : "SteamID64 is unavailable.";
+	const std::string steamIdValue = report.steamId ? tfm::format("||%llu||", static_cast<unsigned long long>(report.steamId))
+													: localization::Get("webhook.steamid_unavailable", "SteamID64 is unavailable.");
 	const auto *globals = g_pCS2ACUtils ? g_pCS2ACUtils->GetServerGlobals() : nullptr;
-	const std::string map = globals && globals->mapname.ToCStr() ? globals->mapname.ToCStr() : "Unavailable";
+	const std::string map =
+		globals && globals->mapname.ToCStr() ? globals->mapname.ToCStr() : localization::Get("webhook.unavailable", "Unavailable");
 	const std::string role = settings::GetWebhookRoleId();
 	const std::string content = role.empty() ? "" : "<@&" + role + ">";
 	const std::string allowed = role.empty() ? "{\"parse\":[]}" : "{\"parse\":[],\"roles\":[\"" + role + "\"]}";
@@ -589,22 +598,33 @@ std::string WebhookService::BuildPayload(const ReportData &report)
 	const std::string footerIcon = logo.empty() ? "" : tfm::format(",\"icon_url\":\"%s\"", JsonEscape(Limit(logo, 2048)));
 	const std::string address = ServerAddress();
 	const std::string addressField =
-		address.empty() ? "" : tfm::format(",{\"name\":\"Address\",\"value\":\"`%s`\",\"inline\":true}", JsonEscape(Limit(address, 512)));
-	const std::string evidenceText =
-		Limit(CompleteSentence(report.evidence.empty() ? "The detector reached its configured threshold" : report.evidence), 1000);
-	const std::string serverName = Limit(ConVarString("hostname", "CS2 Server"), 256);
+		address.empty() ? ""
+						: tfm::format(",{\"name\":\"%s\",\"value\":\"`%s`\",\"inline\":true}",
+									  JsonEscape(localization::Get("webhook.field.address", "Address")), JsonEscape(Limit(address, 512)));
+	const std::string evidenceText = Limit(
+		CompleteSentence(report.evidence.empty() ? localization::Get("webhook.default_evidence", "The detector reached its configured threshold")
+												 : report.evidence),
+		1000);
+	const std::string serverName = Limit(ConVarString("hostname", localization::Get("webhook.default_server_name", "CS2 Server").c_str()), 256);
+	const std::string footer = tfm::format("CS2AC %s • %s", PLUGIN_FULL_VERSION, localization::Get("webhook.footer", "Detection report"));
 
-	return tfm::format("{\"username\":\"CS2AC\",\"content\":\"%s\",\"allowed_mentions\":%s,"
-					   "\"embeds\":[{\"author\":{\"name\":\"%s\"%s},\"color\":15548997%s,\"fields\":["
-					   "{\"name\":\"Player\",\"value\":\"%s\",\"inline\":true},"
-					   "{\"name\":\"STEAMID64\",\"value\":\"%s\",\"inline\":true},"
-					   "{\"name\":\"Detection\",\"value\":\"`%s`\"},"
-					   "{\"name\":\"Evidence\",\"value\":\"```text\\n%s\\n```\"},"
-					   "{\"name\":\"Punishment\",\"value\":\"%s\"},"
-					   "{\"name\":\"Map\",\"value\":\"`%s`\",\"inline\":true}%s],"
-					   "\"timestamp\":\"%s\",\"footer\":{\"text\":\"CS2AC 1.0.3 \\u2022 Detection report\"%s},"
-					   "\"image\":{\"url\":\"https://raw.githubusercontent.com/karola3vax/CS2AC/main/docs/cs2ac-logo.png\"}}]}",
-					   JsonEscape(content), allowed, JsonEscape(serverName), authorIcon, thumbnail, JsonEscape(playerValue), JsonEscape(steamIdValue),
-					   JsonEscape(Limit(report.detection.empty() ? "UNKNOWN" : report.detection, 256)), JsonEscape(evidenceText),
-					   JsonEscape(OutcomeText(report.outcome)), JsonEscape(Limit(map, 256)), addressField, UtcTimestamp(), footerIcon);
+	return tfm::format(
+		"{\"username\":\"CS2AC\",\"content\":\"%s\",\"allowed_mentions\":%s,"
+		"\"embeds\":[{\"author\":{\"name\":\"%s\"%s},\"color\":15548997%s,\"fields\":["
+		"{\"name\":\"%s\",\"value\":\"%s\",\"inline\":true},"
+		"{\"name\":\"%s\",\"value\":\"%s\",\"inline\":true},"
+		"{\"name\":\"%s\",\"value\":\"`%s`\"},"
+		"{\"name\":\"%s\",\"value\":\"```text\\n%s\\n```\"},"
+		"{\"name\":\"%s\",\"value\":\"%s\"},"
+		"{\"name\":\"%s\",\"value\":\"`%s`\",\"inline\":true}%s],"
+		"\"timestamp\":\"%s\",\"footer\":{\"text\":\"%s\"%s},"
+		"\"image\":{\"url\":\"https://raw.githubusercontent.com/karola3vax/CS2AC/main/docs/cs2ac-logo.png\"}}]}",
+		JsonEscape(content), allowed, JsonEscape(serverName), authorIcon, thumbnail, JsonEscape(localization::Get("webhook.field.player", "Player")),
+		JsonEscape(playerValue), JsonEscape(localization::Get("webhook.field.steamid64", "STEAMID64")), JsonEscape(steamIdValue),
+		JsonEscape(localization::Get("webhook.field.detection", "Detection")),
+		JsonEscape(Limit(report.detection.empty() ? localization::Get("webhook.unknown_detection", "UNKNOWN") : report.detection, 256)),
+		JsonEscape(localization::Get("webhook.field.evidence", "Evidence")), JsonEscape(evidenceText),
+		JsonEscape(localization::Get("webhook.field.punishment", "Punishment")), JsonEscape(OutcomeText(report.outcome)),
+		JsonEscape(localization::Get("webhook.field.map", "Map")), JsonEscape(Limit(map, 256)), addressField, UtcTimestamp(), JsonEscape(footer),
+		footerIcon);
 }

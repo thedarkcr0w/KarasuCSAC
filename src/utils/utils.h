@@ -34,6 +34,7 @@ namespace utils
 		AlreadyPunished,
 		CommandTooLong,
 		CommandServiceUnavailable,
+		NetworkUnstable,
 	};
 
 	void Initialize(std::vector<std::string> &missing);

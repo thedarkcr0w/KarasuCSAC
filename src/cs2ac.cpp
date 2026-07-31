@@ -1,5 +1,6 @@
 #include "cs2ac.h"
 
+#include "localization.h"
 #include "movement_analysis/detection/movement_detection.h"
 #include "movement_analysis/player_context.h"
 #include "movement_analysis/settings/movement_settings.h"
@@ -16,6 +17,7 @@
 #include "utils/schema.h"
 #include "utils/utils.h"
 #include "networksystem/inetworkmessages.h"
+#include "cs_gameevents.pb.h"
 #include "gameevents.pb.h"
 #include "igameevents.h"
 
@@ -37,9 +39,14 @@ namespace
 	// "cs2ac_karasu_test_report reset" clears it. Never touched by real detections.
 	karasu::PlayerVerdict karasuTestLedger;
 
-	void HandleDetectionCallback(const char *detection, MovementPlayer *player, std::string_view evidence)
+	void HandleDetectionCallback(const char *detection, MovementPlayer *player, const localization::Text &evidence)
 	{
 		g_CS2AC.HandleDetection(detection, player, evidence);
+	}
+
+	void HandleNetworkVetoDetectionCallback(const char *detection, MovementPlayer *player, const localization::Text &evidence)
+	{
+		g_CS2AC.HandleDetection(detection, player, evidence, false, true);
 	}
 
 	bool IsKickOnlyDetection(const char *detection)
@@ -388,6 +395,10 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	{
 		missing.emplace_back("The center-screen event message used for detection announcements is unavailable.");
 	}
+	if (g_pNetworkMessages && !g_pNetworkMessages->FindNetworkMessageById(GE_FireBulletsId))
+	{
+		missing.emplace_back("The exact weapon firing data used by Silentaim is unavailable.");
+	}
 	if (g_pCVar)
 	{
 		movement_settings::Validate(missing);
@@ -458,7 +469,7 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	convarsRegistered = true;
 	MovementDetectionService::InitSvCheatsWatcher();
 	svCheatsWatcherInstalled = true;
-	detectionSystem.Load(HandleDetectionCallback);
+	detectionSystem.Load(HandleDetectionCallback, HandleNetworkVetoDetectionCallback);
 	hooks::Initialize(missing);
 
 	if (!missing.empty())
@@ -602,7 +613,14 @@ void CS2ACPlugin::OnGameEvent(IGameEvent *event, MovementPlayer *player)
 	detectionSystem.OnGameEvent(event, player, globals ? globals->tickcount : 0);
 }
 
-void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, std::string_view evidence, bool kickOnly)
+void CS2ACPlugin::OnFireBullets(const CMsgTEFireBullets &event)
+{
+	auto *globals = g_pCS2ACUtils->GetServerGlobals();
+	detectionSystem.OnFireBullets(event, globals ? globals->tickcount : 0);
+}
+
+void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly,
+								  bool networkVetoed)
 {
 	if (!detection || !*detection || !player || player->index < 1 || player->index > MAXPLAYERS)
 	{
@@ -616,7 +634,7 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 		utils::AnnounceDetection(detection, player->GetName(), outcome);
 		if (webhook)
 		{
-			webhook->Report(detection, player, evidence, outcome);
+			webhook->Report(detection, player, evidence.localized, outcome);
 		}
 	};
 	if (steamId)
@@ -626,6 +644,12 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 	else
 	{
 		Msg("[CS2AC] Detected %s on %s (SteamID64 unavailable).\n", detection, playerName.c_str());
+	}
+	if (networkVetoed)
+	{
+		finish(utils::DetectionOutcome::NetworkUnstable);
+		Msg("[CS2AC] No punishment was sent because %s's connection exceeded the safe network limits.\n", playerName.c_str());
+		return;
 	}
 	if (!steamId)
 	{
@@ -644,7 +668,10 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 
 	// Karasu policy runs before the upstream punishment path and takes it over
 	// whenever enforcement is armed, so a detection can never be punished twice.
-	const KarasuOutcome karasu = EvaluateKarasuPolicy(detection, player, steamId, evidence);
+	// The relay carries evidence.english on purpose: the localized string is for the
+	// people on this server, but the platform stores one ban ledger for everyone, and
+	// a Turkish server must not write Turkish evidence into it.
+	const KarasuOutcome karasu = EvaluateKarasuPolicy(detection, player, steamId, evidence.english);
 	if (karasu.handled)
 	{
 		finish(karasu.outcome);
@@ -722,7 +749,7 @@ CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detecti
 	const std::string playerName = SanitizeConsoleText(player->GetName());
 	const karasu::DetectorPolicy policy = karasu::PolicyFor(type);
 	karasu::Verdict verdict = karasuVerdicts[player->index].Feed(type, karasu::Clock::now(), settings::GetKarasuCorroborationWindow(),
-																settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
+																 settings::GetKarasuMinConfidence(), settings::GetKarasuSoloBanConfidence());
 
 	// Whether the policy judged this player a cheater, decided before the relay
 	// recommendation is adjusted below.
@@ -739,9 +766,8 @@ CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detecti
 	// The platform refuses to ban on an identity it cannot trust, so establish it
 	// here rather than letting the API guess from a bare SteamID64.
 	const std::uint64_t validatedSteamId = player->GetSteamId64(true);
-	const karasu::IdentitySource identity = validatedSteamId != 0 && validatedSteamId == steamId
-											   ? karasu::IdentitySource::Authenticated
-											   : karasu::IdentitySource::Unauthenticated;
+	const karasu::IdentitySource identity =
+		validatedSteamId != 0 && validatedSteamId == steamId ? karasu::IdentitySource::Authenticated : karasu::IdentitySource::Unauthenticated;
 
 	karasu::RelayReport report;
 	report.steamId = steamId;
@@ -758,8 +784,8 @@ CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detecti
 		report.serverTick = globals->tickcount;
 	}
 
-	Msg("[CS2AC] Karasu policy for %s: tier %s, confidence %d, rule %s, recommendation %s.\n", playerName.c_str(),
-		karasu::TierName(policy.tier), verdict.confidence, verdict.rule, karasu::ActionName(verdict.action));
+	Msg("[CS2AC] Karasu policy for %s: tier %s, confidence %d, rule %s, recommendation %s.\n", playerName.c_str(), karasu::TierName(policy.tier),
+		verdict.confidence, verdict.rule, karasu::ActionName(verdict.action));
 
 	// Enforcement disabled: still report, so the platform can build its ledger and
 	// staff can review, but leave the upstream punishment path in charge.
@@ -921,6 +947,7 @@ void CS2ACPlugin::OnConfigLoaded()
 	configLoadFailed = false;
 	lastConfigLoad = std::chrono::steady_clock::now();
 	settings::MarkConfigReloaded();
+	localization::Reload(settings::GetLanguage());
 	if (webhook)
 	{
 		webhook->Reload();
@@ -1080,8 +1107,7 @@ void CS2ACPlugin::TestKarasuRelay(const char *detection)
 	}
 
 	Msg("[CS2AC] Karasu relay test: %s, tier %s, family %s, confidence %d, rule %s, recommendation %s.\n", report.detectionName,
-		karasu::TierName(policy.tier), karasu::FamilyName(policy.family), verdict.confidence, verdict.rule,
-		karasu::ActionName(verdict.action));
+		karasu::TierName(policy.tier), karasu::FamilyName(policy.family), verdict.confidence, verdict.rule, karasu::ActionName(verdict.action));
 
 	if (karasu::relay::Emit(report))
 	{
@@ -1183,8 +1209,8 @@ void CS2ACPlugin::PrintStatus() const
 									: karasuEnforce == 1 ? "kick on this server only"
 														 : "report only";
 	Msg("[CS2AC] Karasu: relay %s, enforcement %s.\n", settings::IsKarasuRelayEnabled() ? "on" : "off", karasuEnforceText);
-	Msg("[CS2AC] Karasu policy: bans alone at confidence %d, corroborates at %d, window %d seconds.\n",
-		settings::GetKarasuSoloBanConfidence(), settings::GetKarasuMinConfidence(), settings::GetKarasuCorroborationWindow());
+	Msg("[CS2AC] Karasu policy: bans alone at confidence %d, corroborates at %d, window %d seconds.\n", settings::GetKarasuSoloBanConfidence(),
+		settings::GetKarasuMinConfidence(), settings::GetKarasuCorroborationWindow());
 	Msg("[CS2AC] Karasu relay: %llu sent, %llu dropped, %llu truncated.\n", static_cast<unsigned long long>(karasu::relay::EmittedCount()),
 		static_cast<unsigned long long>(karasu::relay::DroppedCount()), static_cast<unsigned long long>(karasu::relay::TruncatedCount()));
 	const size_t webhookQueueSize = webhook ? webhook->QueueSize() : 0;
@@ -1192,12 +1218,6 @@ void CS2ACPlugin::PrintStatus() const
 		webhook && webhook->IsConfigured() ? (webhook->IsDisabled() ? "disabled after an error" : "configured") : "not configured", webhookQueueSize,
 		webhookQueueSize == 1 ? "" : "s");
 	Msg("[CS2AC] sv_cheats testing: %s.\n", MovementDetectionService::IsSvCheatsTestingAllowed() ? "allowed" : "not allowed");
-}
-
-MovementPlayer *CS2ACPlugin::ResolveImpactShooter(int truncatedUserId) const
-{
-	auto *globals = g_pCS2ACUtils->GetServerGlobals();
-	return detectionSystem.ResolveImpactShooter(truncatedUserId, globals ? globals->tickcount : 0);
 }
 
 void CS2ACPlugin::ResetRuntime()
@@ -1252,6 +1272,7 @@ void CS2ACPlugin::CleanupRuntime()
 		MovementDetectionService::CleanupSvCheatsWatcher();
 		svCheatsWatcherInstalled = false;
 	}
+	localization::Shutdown();
 	settings::Shutdown();
 	if (convarsRegistered)
 	{

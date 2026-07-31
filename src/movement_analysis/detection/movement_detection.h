@@ -1,5 +1,6 @@
 #pragma once
 
+#include "localization.h"
 #include "movement_analysis/player_context.h"
 
 class Jump;
@@ -134,18 +135,21 @@ public:
 
 	f32 currentMaxFps {};
 	bool cvarMonitorStarted {};
+	std::size_t cvarQueryIndex {};
+	f64 cvarCycleInterval {};
 	std::set<std::string> invalidCvarLatches;
 	std::set<std::string> invalidQueriedCvars;
 	std::set<std::string> invalidUserInfoCvars;
-	void MarkInvalidCvar(const char *cvarName, const std::string &reason, bool kickOnly = false);
+	void MarkInvalidCvar(const char *cvarName, const localization::Text &reason, bool kickOnly = false);
 	void MarkValidCvar(const char *cvarName);
-	void MarkCvarSource(const char *cvarName, const std::string &reason, bool invalid, bool userInfo, bool kickOnly = false);
-	void MarkInfraction(Infraction::Type type, const std::string &reason, bool kickOnly = false);
+	void MarkCvarSource(const char *cvarName, const localization::Text &reason, bool invalid, bool userInfo, bool kickOnly = false);
+	void MarkInfraction(Infraction::Type type, const localization::Text &reason, bool kickOnly = false);
 
 private:
 	void RefreshSettings();
 	u32 currentCmdNum {};
 	std::uint64_t settingsMask {};
 	std::uint64_t settingsRevision {};
+	static constexpr std::size_t maxNullInputEvents = 2048;
 	void ClearDetectionBuffers();
 };

@@ -22,8 +22,8 @@ namespace
 	constexpr size_t commandHistorySize = 128;
 	constexpr int snapWindowTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr float minimumDistance = 100.0f;
-	constexpr int detectionThreshold = 4;
-	constexpr auto evidenceWindow = std::chrono::minutes(10);
+	constexpr int detectionThreshold = 3;
+	constexpr auto evidenceWindow = std::chrono::minutes(5);
 
 	enum class AimbotRule
 	{
@@ -249,6 +249,11 @@ namespace detection
 		float largestSnap = 0.0f;
 		float bestBefore = 0.0f;
 		float bestAfter = 0.0f;
+		float largestMeasuredSnap = -1.0f;
+		float measuredBefore = 0.0f;
+		float measuredAfter = 0.0f;
+		int measuredMovements = 0;
+		const char *measurementFailure = "no continuous adjacent command history was available";
 		bool reusedSnap = false;
 		AimbotRule matchedRule = AimbotRule::None;
 		auto findCommand = [&](int commandNumber) -> AimCommand *
@@ -263,15 +268,18 @@ namespace detection
 			AimCommand *older = findCommand(newer->commandNumber - 1);
 			if (!older)
 			{
+				measurementFailure = "the previous simulated command was missing";
 				break;
 			}
 			const std::int64_t serverGap = static_cast<std::int64_t>(newer->serverTick) - older->serverTick;
 			if (static_cast<std::int64_t>(newer->clientTick) - older->clientTick != 1 || serverGap < 0 || serverGap > 1)
 			{
+				measurementFailure = "the command, client-tick, or server-tick history was discontinuous";
 				break;
 			}
 			if (static_cast<std::int64_t>(shot->serverTick) - older->serverTick > snapWindowTicks)
 			{
+				measurementFailure = "the preceding command was outside the 0.5-second snap window";
 				break;
 			}
 
@@ -282,6 +290,7 @@ namespace detection
 			if (!olderTarget || !newerTarget || !olderAttacker || !newerAttacker || olderTarget->teleported || newerTarget->teleported
 				|| olderAttacker->teleported || newerAttacker->teleported)
 			{
+				measurementFailure = "matching historical player positions were missing or interrupted by a teleport";
 				break;
 			}
 			const float snap = AngularDistance(older->angles, newer->angles);
@@ -289,7 +298,15 @@ namespace detection
 			const float after = NearestBodyAimError(newerAttacker->eyePosition, newer->angles, newerTarget->origin);
 			if (!std::isfinite(snap) || !std::isfinite(before) || !std::isfinite(after))
 			{
+				measurementFailure = "an angle or target-error measurement was invalid";
 				break;
+			}
+			++measuredMovements;
+			if (snap > largestMeasuredSnap)
+			{
+				largestMeasuredSnap = snap;
+				measuredBefore = before;
+				measuredAfter = after;
 			}
 			const bool converged = (snap > 10.0f && after < before * 0.2f) || (snap > 5.0f && after < before * 0.1f);
 			const bool fresh = !data.hasCountedIncident || newer->commandNumber > data.lastCountedIncidentCommand;
@@ -355,7 +372,30 @@ namespace detection
 			}
 			else
 			{
-				AIMBOT_DEBUG("%s damaging shot did not converge suspiciously.\n", attacker->GetName());
+				if (measuredMovements == 0)
+				{
+					AIMBOT_DEBUG("%s damaging shot rejected because %s.\n", attacker->GetName(), measurementFailure);
+				}
+				else
+				{
+					const float improvement = measuredBefore > EPSILON ? (1.0f - measuredAfter / measuredBefore) * 100.0f : 0.0f;
+					if (largestMeasuredSnap <= 5.0f)
+					{
+						AIMBOT_DEBUG(
+							"%s damaging shot rejected after checking %d adjacent movements: the largest one-command movement was %.2f degrees "
+							"with target error %.2f -> %.2f (%.1f%% closer); movement must exceed 5.00 degrees.\n",
+							attacker->GetName(), measuredMovements, largestMeasuredSnap, measuredBefore, measuredAfter, improvement);
+					}
+					else
+					{
+						const float requiredImprovement = largestMeasuredSnap > 10.0f ? 80.0f : 90.0f;
+						AIMBOT_DEBUG(
+							"%s damaging shot rejected after checking %d adjacent movements: the largest one-command movement was %.2f degrees "
+							"with target error %.2f -> %.2f (%.1f%% closer); this movement requires more than %.0f%% improvement.\n",
+							attacker->GetName(), measuredMovements, largestMeasuredSnap, measuredBefore, measuredAfter, improvement,
+							requiredImprovement);
+					}
+				}
 			}
 			return true;
 		}
@@ -383,12 +423,18 @@ namespace detection
 		{
 			if (announce)
 			{
-				const std::string details =
+				const localization::Text details =
 					matchedRule == AimbotRule::SnapReturn
-						? tfm::format("%zu snap-hit incidents reached the threshold; the latest was a %.2f-degree snap-return.", incidents.size(),
-									  largestSnap)
-						: tfm::format("%zu snap-hit incidents reached the threshold; latest snap %.2f degrees, target error %.2f -> %.2f degrees.",
-									  incidents.size(), largestSnap, bestBefore, bestAfter);
+						? localization::Format("evidence.aimbot.snap_return",
+											   "{incidents} snap-hit incidents reached the threshold; the latest was a {snap}-degree snap-return.",
+											   {{"incidents", tfm::format("%zu", incidents.size())}, {"snap", tfm::format("%.2f", largestSnap)}})
+						: localization::Format("evidence.aimbot.convergence",
+											   "{incidents} snap-hit incidents reached the threshold; latest snap {snap} degrees, target error "
+											   "{before} -> {after} degrees.",
+											   {{"incidents", tfm::format("%zu", incidents.size())},
+												{"snap", tfm::format("%.2f", largestSnap)},
+												{"before", tfm::format("%.2f", bestBefore)},
+												{"after", tfm::format("%.2f", bestAfter)}});
 				announce("AIMBOT", attacker, details);
 			}
 			incidents.clear();

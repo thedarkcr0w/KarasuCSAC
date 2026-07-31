@@ -5,6 +5,7 @@
 #include "movement_analysis/jump_analysis/jump_analysis.h"
 #include "movement_analysis/settings/movement_settings.h"
 #include "movement_analysis/events/movement_events.h"
+#include "settings.h"
 
 CS2ACPlayer::~CS2ACPlayer()
 {
@@ -28,6 +29,7 @@ void CS2ACPlayer::Reset()
 {
 	MovementPlayer::Reset();
 	lastTeleportTime = 0.0;
+	jumpAnalysisActive = false;
 	if (movementDetection)
 	{
 		movementDetection->Reset();
@@ -73,14 +75,27 @@ void CS2ACPlayer::OnProcessMovement()
 {
 	MovementPlayer::OnProcessMovement();
 	movementDetection->OnProcessMovement();
-	jumpAnalysis->OnProcessMovement();
+	const bool shouldAnalyzeJumps =
+		settings::IsDetectionEnabled(DetectionType::Autostrafe) && movementDetection->ShouldRunDetections() && !IsFakeClient() && !IsCSTV();
+	if (jumpAnalysisActive && !shouldAnalyzeJumps)
+	{
+		jumpAnalysis->Reset();
+	}
+	jumpAnalysisActive = shouldAnalyzeJumps;
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnProcessMovement();
+	}
 }
 
 void CS2ACPlayer::OnProcessMovementPost()
 {
 	movementDetection->OnProcessMovementPost();
-	jumpAnalysis->UpdateJump();
-	jumpAnalysis->OnProcessMovementPost();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->UpdateJump();
+		jumpAnalysis->OnProcessMovementPost();
+	}
 	MovementPlayer::OnProcessMovementPost();
 }
 
@@ -113,28 +128,43 @@ void CS2ACPlayer::OnAirMove()
 
 void CS2ACPlayer::OnAirAccelerate(Vector &, f32 &, f32 &)
 {
-	jumpAnalysis->OnAirAccelerate();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnAirAccelerate();
+	}
 }
 
 void CS2ACPlayer::OnAirAcceleratePost(Vector wishdir, f32 wishspeed, f32 accel)
 {
-	jumpAnalysis->OnAirAcceleratePost(wishdir, wishspeed, accel);
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnAirAcceleratePost(wishdir, wishspeed, accel);
+	}
 }
 
 void CS2ACPlayer::OnTryPlayerMove(Vector *, trace_t *, bool *)
 {
-	jumpAnalysis->OnTryPlayerMove();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnTryPlayerMove();
+	}
 }
 
 void CS2ACPlayer::OnTryPlayerMovePost(Vector *, trace_t *, bool *)
 {
-	jumpAnalysis->OnTryPlayerMovePost();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnTryPlayerMovePost();
+	}
 }
 
 void CS2ACPlayer::OnStartTouchGround()
 {
 	movementDetection->CreateLandEvent();
-	jumpAnalysis->EndJump();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->EndJump();
+	}
 }
 
 void CS2ACPlayer::OnStopTouchGround()
@@ -146,19 +176,28 @@ void CS2ACPlayer::OnStopTouchGround()
 		f32 startTime = currentMoveData->m_flSubtickStartFraction + currentMoveData->m_nTickCount;
 		inPerf = startTime >= landingTick - window && startTime <= landingTick + window && jumped;
 	}
-	jumpAnalysis->AddJump();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->AddJump();
+	}
 }
 
 void CS2ACPlayer::OnChangeMoveType(MoveType_t oldMoveType)
 {
 	movementDetection->OnChangeMoveType(oldMoveType);
-	jumpAnalysis->OnChangeMoveType(oldMoveType);
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->OnChangeMoveType(oldMoveType);
+	}
 }
 
 void CS2ACPlayer::OnTeleport(const Vector *, const QAngle *, const Vector *)
 {
 	lastTeleportTime = g_pCS2ACUtils->GetServerGlobals()->curtime;
-	jumpAnalysis->HandleTeleport();
+	if (jumpAnalysisActive)
+	{
+		jumpAnalysis->HandleTeleport();
+	}
 }
 
 bool CS2ACPlayer::JustTeleported(f32 threshold)

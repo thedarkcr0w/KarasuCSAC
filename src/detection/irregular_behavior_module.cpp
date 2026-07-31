@@ -18,7 +18,7 @@ CConVar<bool> cs2ac_irregular_debug("cs2ac_irregular_debug", FCVAR_NONE, "Show I
 
 namespace
 {
-	constexpr int evidenceWindowSeconds = 10 * 60;
+	constexpr int evidenceWindowSeconds = 5 * 60;
 	constexpr float minimumDistance = 10.0f;
 	constexpr float longDistance = 20.0f;
 	constexpr int detectionScore = 16;
@@ -120,7 +120,8 @@ namespace detection
 
 		attempt->success = true;
 		attempt->points = static_cast<int>(airborne) + static_cast<int>(noScope) + 2 * static_cast<int>(airborne && noScope)
-						  + static_cast<int>(distance >= longDistance) + 2 + static_cast<int>(event->GetBool("headshot", false));
+						  + static_cast<int>(distance >= longDistance) + static_cast<int>(event->GetInt("penetrated", 0) > 0) + 2
+						  + static_cast<int>(event->GetBool("headshot", false));
 		IRREGULAR_DEBUG("%s matched difficult kill %llu worth %d points.\n", attacker->GetName(), static_cast<unsigned long long>(shot.id),
 						attempt->points);
 	}
@@ -187,9 +188,14 @@ namespace detection
 		}
 		if (announce)
 		{
-			announce("IRREGULAR BEHAVIOR", player,
-					 tfm::format("%d points from %d successful difficult shots out of %d attempts (%.1f%% success).", score, successes, attempts,
-								 attempts ? successes * 100.0 / attempts : 0.0));
+			announce(
+				"IRREGULAR BEHAVIOR", player,
+				localization::Format("evidence.irregular_behavior",
+									 "{score} points from {successes} successful difficult shots out of {attempts} attempts ({accuracy}% success).",
+									 {{"score", tfm::format("%d", score)},
+									  {"successes", tfm::format("%d", successes)},
+									  {"attempts", tfm::format("%d", attempts)},
+									  {"accuracy", tfm::format("%.1f", attempts ? successes * 100.0 / attempts : 0.0)}}));
 		}
 		data.evidence.clear();
 		data.pending.clear();

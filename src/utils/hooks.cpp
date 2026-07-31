@@ -10,6 +10,7 @@
 
 #include "igameevents.h"
 #include "iserver.h"
+#include "cs_gameevents.pb.h"
 
 SH_DECL_MANUALHOOK3_void(Teleport, 0, 0, 0, const Vector *, const QAngle *, const Vector *);
 SH_DECL_HOOK3_void(ISource2Server, GameFrame, SH_NOATTRIB, false, bool, bool, bool);
@@ -19,6 +20,8 @@ SH_DECL_HOOK4_void(ISource2GameClients, ClientActive, SH_NOATTRIB, false, CPlaye
 SH_DECL_HOOK5_void(ISource2GameClients, ClientDisconnect, SH_NOATTRIB, false, CPlayerSlot, ENetworkDisconnectionReason, const char *, uint64,
 				   const char *);
 SH_DECL_HOOK2(IGameEventManager2, FireEvent, SH_NOATTRIB, false, bool, IGameEvent *, bool);
+SH_DECL_HOOK8_void(IGameEventSystem, PostEventAbstract, SH_NOATTRIB, false, CSplitScreenSlot, bool, int, const uint64 *, INetworkMessageInternal *,
+				   const CNetMessage *, unsigned long, NetChannelBufType_t);
 
 namespace
 {
@@ -50,8 +53,8 @@ namespace
 			return false;
 		}
 		const char *name = event->GetName();
-		return CS2AC_STREQ(name, "weapon_fire") || CS2AC_STREQ(name, "bullet_impact") || CS2AC_STREQ(name, "player_hurt")
-			   || CS2AC_STREQ(name, "player_death") || CS2AC_STREQ(name, "player_spawn") || CS2AC_STREQ(name, "round_end");
+		return CS2AC_STREQ(name, "weapon_fire") || CS2AC_STREQ(name, "player_hurt") || CS2AC_STREQ(name, "player_death")
+			   || CS2AC_STREQ(name, "player_spawn") || CS2AC_STREQ(name, "round_end");
 	}
 
 	MovementPlayer *ResolveEventPlayer(IGameEvent *event)
@@ -60,12 +63,6 @@ namespace
 		{
 			return nullptr;
 		}
-		if (CS2AC_STREQ(event->GetName(), "bullet_impact"))
-		{
-			const int userID = event->GetInt("userid", -1);
-			return userID < 0 ? nullptr : g_CS2AC.ResolveImpactShooter(userID);
-		}
-
 		auto *player = g_pCS2ACPlayerManager->ToPlayer(static_cast<CBasePlayerController *>(event->GetPlayerController("userid")));
 		if (player)
 		{
@@ -89,6 +86,25 @@ namespace
 		}
 		pendingGameEvents.push_back(pending);
 		RETURN_META_VALUE(MRES_IGNORED, true);
+	}
+
+	void HookPostEvent(CSplitScreenSlot, bool, int, const uint64 *, INetworkMessageInternal *event, const CNetMessage *data, unsigned long,
+					   NetChannelBufType_t)
+	{
+		if (!g_CS2AC.IsLoaded() || !event || !data)
+		{
+			RETURN_META(MRES_IGNORED);
+		}
+		auto *info = event->GetNetMessageInfo();
+		if (!info)
+		{
+			RETURN_META(MRES_IGNORED);
+		}
+		if (info->m_MessageId == GE_FireBulletsId)
+		{
+			g_CS2AC.OnFireBullets(*data->ToPB<CMsgTEFireBullets>());
+		}
+		RETURN_META(MRES_IGNORED);
 	}
 
 	bool HookFireEventAfter(IGameEvent *, bool)
@@ -280,6 +296,7 @@ bool hooks::Initialize(std::vector<std::string> &missing)
 	add(SH_ADD_HOOK(ISource2GameClients, ClientDisconnect, g_pSource2GameClients, SH_STATIC(HookClientDisconnect), true), "disconnecting player");
 	add(SH_ADD_HOOK(IGameEventManager2, FireEvent, interfaces::pGameEventManager, SH_STATIC(HookFireEventBefore), false), "game event preparation");
 	add(SH_ADD_HOOK(IGameEventManager2, FireEvent, interfaces::pGameEventManager, SH_STATIC(HookFireEventAfter), true), "completed game event");
+	add(SH_ADD_HOOK(IGameEventSystem, PostEventAbstract, interfaces::pGameEventSystem, SH_STATIC(HookPostEvent), false), "weapon telemetry");
 
 	if (!missing.empty())
 	{

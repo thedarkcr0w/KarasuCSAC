@@ -42,10 +42,10 @@ CConVar<bool> cs2ac_hyperscroll_debug("cs2ac_hyperscroll_debug", FCVAR_NONE,
 #define MIN_SAMPLE_COUNT         20                                             // Minimum number of samples before we start checking for bhop hacks
 #define WINDOW_SIZE              30                                             // Number of recent jumps to consider for bhop hack detection
 // Number of consecutive perfect bhops in the window to trigger a bhop hack infraction, regardless of ratio
-#define NUM_CONSECUTIVE_PERFS_FOR_INFRACTION 15
-// Number of consecutive perfs in the window to trigger a pattern check for bhop hack detection, regardless of ratio.
-#define NUM_CONSECUTIVE_PERFS_FOR_PATTERN_CHECK 12
-#define PERF_RATIO_FOR_HYPERSCROLL_INFRACTION   0.6f
+#define NUM_CONSECUTIVE_PERFS_FOR_INFRACTION 10
+// Perfect jumps add one and failed jumps remove one before repetitive input patterns can trigger an infraction.
+#define PERF_SCORE_FOR_PATTERN_CHECK          7
+#define PERF_RATIO_FOR_HYPERSCROLL_INFRACTION 0.6f
 
 #define REPETITIVE_PATTERN_THRESHOLD 0.9f // If 90% of the perfs are the same pattern, it might be a cheat...
 #define LOW_PATTERN_THRESHOLD        4    // ...if the most common pattern is smaller than 4.
@@ -257,6 +257,8 @@ void MovementDetectionService::CheckLandingEvents()
 		u32 totalChainEligibleEvents = 0;
 		u32 maxPerfChain = 0;
 		u32 currentPerfChain = 0;
+		u32 maxPatternPerfScore = 0;
+		u32 currentPatternPerfScore = 0;
 		std::unordered_map<u32, u32> patterns;
 		u32 mostCommonPattern = 0;
 		u32 mostCommonPatternCount = 0;
@@ -292,16 +294,19 @@ void MovementDetectionService::CheckLandingEvents()
 				numPerfs++;
 				currentPerfChain++;
 				maxPerfChain = Max(maxPerfChain, currentPerfChain);
+				currentPatternPerfScore++;
+				maxPatternPerfScore = Max(maxPatternPerfScore, currentPatternPerfScore);
 			}
 			else
 			{
 				currentPerfChain = 0;
+				currentPatternPerfScore = currentPatternPerfScore > 0 ? currentPatternPerfScore - 1 : 0;
 			}
 		}
 		f32 averagePattern = totalPatternOccurrences > 0 ? (f32)weightedPatternSum / (f32)totalPatternOccurrences : 0.0f;
-		BHOP_DEBUG("%s evaluation: %zu landings, %u eligible, %u perfect, longest perfect chain %u, %u completed patterns, "
+		BHOP_DEBUG("%s evaluation: %zu landings, %u eligible, %u perfect, longest perfect chain %u, best pattern score %u, %u completed patterns, "
 				   "dominant pattern %u repeated %u times.\n",
-				   this->player->GetName(), this->recentLandingEvents.size(), totalChainEligibleEvents, numPerfs, maxPerfChain,
+				   this->player->GetName(), this->recentLandingEvents.size(), totalChainEligibleEvents, numPerfs, maxPerfChain, maxPatternPerfScore,
 				   totalPatternOccurrences, mostCommonPattern, mostCommonPatternCount);
 
 		// Hard consecutive perf chain check.
@@ -309,22 +314,30 @@ void MovementDetectionService::CheckLandingEvents()
 		{
 			this->MarkInfraction(
 				MovementDetectionService::Infraction::Type::BhopHack,
-				tfm::format("%u of %u eligible landings formed one consecutive frame-perfect bhop chain.", maxPerfChain, totalChainEligibleEvents));
+				localization::Format("evidence.bhop.perfect_chain",
+									 "{perfect} of {landings} eligible landings formed one consecutive frame-perfect bhop chain.",
+									 {{"perfect", tfm::format("%u", maxPerfChain)}, {"landings", tfm::format("%u", totalChainEligibleEvents)}}));
 			this->recentLandingEvents.clear();
 			this->bhopDirty = false;
 			return;
 		}
 
-		// Pattern-based bhop infraction after medium chain threshold.
-		if (maxPerfChain >= NUM_CONSECUTIVE_PERFS_FOR_PATTERN_CHECK)
+		// Pattern-based bhop infraction after a decaying perfect-jump score.
+		if (maxPatternPerfScore >= PERF_SCORE_FOR_PATTERN_CHECK)
 		{
-			if (totalPatternOccurrences >= NUM_CONSECUTIVE_PERFS_FOR_PATTERN_CHECK
+			if (totalPatternOccurrences >= PERF_SCORE_FOR_PATTERN_CHECK
 				&& mostCommonPatternCount >= totalPatternOccurrences * REPETITIVE_PATTERN_THRESHOLD && mostCommonPattern < LOW_PATTERN_THRESHOLD
 				&& settings::IsDetectionEnabled(DetectionType::Bhop))
 			{
-				this->MarkInfraction(MovementDetectionService::Infraction::Type::BhopHack,
-									 tfm::format("%u of %u completed jump patterns repeated %u inputs, with an average of %.2f inputs.",
-												 mostCommonPatternCount, totalPatternOccurrences, mostCommonPattern, averagePattern));
+				this->MarkInfraction(
+					MovementDetectionService::Infraction::Type::BhopHack,
+					localization::Format(
+						"evidence.bhop.repeated_pattern",
+						"{repeated} of {patterns} completed jump patterns repeated {inputs} inputs, with an average of {average} inputs.",
+						{{"repeated", tfm::format("%u", mostCommonPatternCount)},
+						 {"patterns", tfm::format("%u", totalPatternOccurrences)},
+						 {"inputs", tfm::format("%u", mostCommonPattern)},
+						 {"average", tfm::format("%.2f", averagePattern)}}));
 				this->recentLandingEvents.clear();
 				this->bhopDirty = false;
 				return;
@@ -341,10 +354,16 @@ void MovementDetectionService::CheckLandingEvents()
 			&& totalPatternOccurrences >= MIN_SAMPLE_COUNT && totalChainEligibleEvents >= MIN_SAMPLE_COUNT
 			&& settings::IsDetectionEnabled(DetectionType::Hyperscroll))
 		{
-			this->MarkInfraction(MovementDetectionService::Infraction::Type::Hyperscroll,
-								 tfm::format("The player averaged %.2f jump inputs across %u completed landing patterns, while %u of %u "
-											 "eligible landings were frame-perfect (%.2f%%).",
-											 averagePattern, totalPatternOccurrences, numPerfs, totalChainEligibleEvents, perfectRatio * 100.0f));
+			this->MarkInfraction(
+				MovementDetectionService::Infraction::Type::Hyperscroll,
+				localization::Format("evidence.hyperscroll",
+									 "The player averaged {average} jump inputs across {patterns} completed landing patterns, while {perfect} of "
+									 "{landings} eligible landings were frame-perfect ({ratio}%).",
+									 {{"average", tfm::format("%.2f", averagePattern)},
+									  {"patterns", tfm::format("%u", totalPatternOccurrences)},
+									  {"perfect", tfm::format("%u", numPerfs)},
+									  {"landings", tfm::format("%u", totalChainEligibleEvents)},
+									  {"ratio", tfm::format("%.2f", perfectRatio * 100.0f)}}));
 			this->recentLandingEvents.clear();
 			this->bhopDirty = false;
 			return;

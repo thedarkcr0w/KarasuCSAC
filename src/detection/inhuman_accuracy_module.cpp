@@ -18,12 +18,12 @@ CConVar<bool> cs2ac_inhuman_accuracy_debug("cs2ac_inhuman_accuracy_debug", FCVAR
 
 namespace
 {
-	constexpr int evidenceWindowSeconds = 10 * 60;
-	constexpr int minimumAttempts = 24;
-	constexpr int requiredHitsPerTwentyFour = 20;
+	constexpr int evidenceWindowSeconds = 5 * 60;
+	constexpr int minimumAttempts = 15;
+	constexpr int requiredAccuracyPercent = 85;
 	constexpr float minimumDistance = 100.0f;
 	constexpr float attemptHalfWidth = 32.0f;
-	static_assert(requiredHitsPerTwentyFour <= 24);
+	static_assert(requiredAccuracyPercent <= 100);
 
 	bool IsAccuracyWeapon(std::string_view weapon)
 	{
@@ -137,8 +137,8 @@ namespace detection
 		for (int targetIndex = 1; targetIndex <= MAXPLAYERS; ++targetIndex)
 		{
 			const auto &target = frame->players[targetIndex];
-			if (targetIndex == player->index || !target.valid || target.teleported || !AreOpponents(attacker.team, target.team)
-				|| (!shot.hurtSeen && !target.alive))
+			if ((shot.hurtSeen && targetIndex != shot.victimIndex) || targetIndex == player->index || !target.valid || target.teleported
+				|| !AreOpponents(attacker.team, target.team) || (!shot.hurtSeen && !target.alive))
 			{
 				continue;
 			}
@@ -153,16 +153,13 @@ namespace detection
 			{
 				continue;
 			}
-			if (matchedTarget != -1)
+			if (error < matchedError)
 			{
-				ACCURACY_DEBUG("%s shot %llu rejected because more than one target matched.\n", player->GetName(),
-							   static_cast<unsigned long long>(shot.id));
-				return;
+				matchedTarget = targetIndex;
+				matchedError = error;
 			}
-			matchedTarget = targetIndex;
-			matchedError = error;
 		}
-		if (matchedTarget == -1 || (shot.hurtSeen && shot.victimIndex != matchedTarget))
+		if (matchedTarget == -1)
 		{
 			return;
 		}
@@ -186,14 +183,17 @@ namespace detection
 		}
 		ACCURACY_DEBUG("%s shot %llu counted at %.3f degrees: %d/%d hits.\n", player->GetName(), static_cast<unsigned long long>(shot.id),
 					   matchedError, hits, attempts);
-		if (attempts < minimumAttempts || hits * 24 < attempts * requiredHitsPerTwentyFour)
+		if (attempts < minimumAttempts || hits * 100 < attempts * requiredAccuracyPercent)
 		{
 			return;
 		}
 		if (announce)
 		{
 			announce("INHUMAN ACCURACY", player,
-					 tfm::format("%d of %d qualifying shots hit (%.1f%% accuracy).", hits, attempts, attempts ? hits * 100.0 / attempts : 0.0));
+					 localization::Format("evidence.inhuman_accuracy", "{hits} of {attempts} qualifying shots hit ({accuracy}% accuracy).",
+										  {{"hits", tfm::format("%d", hits)},
+										   {"attempts", tfm::format("%d", attempts)},
+										   {"accuracy", tfm::format("%.1f", attempts ? hits * 100.0 / attempts : 0.0)}}));
 		}
 		data.evidence.clear();
 	}

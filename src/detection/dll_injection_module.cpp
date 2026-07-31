@@ -22,7 +22,7 @@ namespace
 	constexpr auto scanInterval = std::chrono::minutes(2);
 
 	// Keep normal client and game-instructor subscriptions out of this list.
-	constexpr std::array<const char *, 118> blacklistedEvents = {
+	constexpr std::array<const char *, 117> blacklistedEvents = {
 		"gameui_hidden",
 		"player_chat",
 		"player_score",
@@ -65,7 +65,6 @@ namespace
 		"round_poststart",
 		"tagrenade_detonate",
 		"inferno_extinguish",
-		"player_jump",
 		"mb_input_lock_success",
 		"mb_input_lock_cancel",
 		"nav_generate",
@@ -143,7 +142,7 @@ namespace
 		"dynamic_shadow_light_changed",
 	};
 
-	static_assert(blacklistedEvents.size() == 118, "The DLL Injection event list must contain 118 entries.");
+	static_assert(blacklistedEvents.size() == 117, "The DLL Injection event list must contain 117 entries.");
 } // namespace
 
 namespace detection
@@ -173,6 +172,7 @@ namespace detection
 			return;
 		}
 
+		bool scannedPlayerThisFrame = false;
 		for (u32 index = 1; index <= MAXPLAYERS; ++index)
 		{
 			auto *player = g_pCS2ACPlayerManager->ToPlayer(index);
@@ -198,6 +198,10 @@ namespace detection
 			{
 				continue;
 			}
+			if (scannedPlayerThisFrame)
+			{
+				continue;
+			}
 
 			auto *listener = g_pCS2ACUtils->GetLegacyGameEventListener(player->GetPlayerSlot());
 			if (!listener)
@@ -206,6 +210,7 @@ namespace detection
 				DLL_INJECTION_DEBUG("%s has no legacy event listener yet; retrying in 10 seconds.\n", player->GetName());
 				continue;
 			}
+			scannedPlayerThisFrame = true;
 			nextScan = now + scanInterval;
 
 			std::bitset<blacklistedEvents.size()> current;
@@ -245,9 +250,11 @@ namespace detection
 					break;
 				}
 			}
-			announce(
-				"DLL INJECTION", player,
-				tfm::format("%zu blacklisted client event subscription%s found: %s.", current.count(), current.count() == 1 ? "" : "s", matches));
+			announce("DLL INJECTION", player,
+					 localization::Format(current.count() == 1 ? "evidence.dll_injection.one" : "evidence.dll_injection.many",
+										  current.count() == 1 ? "{count} blacklisted client event subscription found: {events}."
+															   : "{count} blacklisted client event subscriptions found: {events}.",
+										  {{"count", tfm::format("%zu", current.count())}, {"events", matches}}));
 		}
 	}
 

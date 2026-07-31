@@ -29,6 +29,7 @@ def createProtobufLibrary(sdk_target, sdk, cxx):
     os.path.join(sdk['path'], 'game', 'shared', 'gameevents.proto'),
     os.path.join(sdk['path'], 'game', 'shared', 'usermessages.proto'),
     os.path.join(sdk['path'], 'game', 'shared', 'usercmd.proto'),
+    os.path.join(sdk['path'], 'game', 'shared', 'cs', 'cs_gameevents.proto'),
     os.path.join(sdk['path'], 'game', 'shared', 'cs', 'cs_usercmd.proto'),
     os.path.join(sdk['path'], 'networksystem', 'networksystem_protomessages.proto'),
   ]

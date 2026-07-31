@@ -16,6 +16,9 @@ namespace
 	std::size_t rejectedWhitelistEntries {};
 	std::size_t duplicateWhitelistEntries {};
 	std::uint64_t settingsRevision {1};
+	std::uint64_t detectionMask {};
+	bool detectionMaskDirty {true};
+	bool pluginEnabled {};
 
 	// Defaults for the Karasu knobs, used before the config has been executed and
 	// whenever a value in cs2ac.cfg does not parse.
@@ -36,6 +39,12 @@ namespace
 		{
 			settingsRevision = 1;
 		}
+	}
+
+	void OnDetectionSettingChanged(CConVar<bool> *, CSplitScreenSlot, const bool *, const bool *)
+	{
+		detectionMaskDirty = true;
+		BumpRevision();
 	}
 
 	void OnWhitelistChanged(CConVar<CUtlString> *, CSplitScreenSlot, const CUtlString *newValue, const CUtlString *)
@@ -70,27 +79,36 @@ namespace
 
 	struct Configuration
 	{
-		CConVar<bool> enabled {"cs2ac_enabled", FCVAR_NONE, "Enable or disable CS2AC", true};
-		CConVar<bool> aimbotEnabled {"cs2ac_aimbot_enabled", FCVAR_NONE, "Detect damaging visible aim snaps", true};
-		CConVar<bool> aimlockEnabled {"cs2ac_aimlock_enabled", FCVAR_NONE, "Detect unnaturally precise target tracking", true};
-		CConVar<bool> antiaimEnabled {"cs2ac_antiaim_enabled", FCVAR_NONE, "Detect impossible or manipulated view angles", true};
-		CConVar<bool> autostrafeEnabled {"cs2ac_autostrafe_enabled", FCVAR_NONE, "Detect automated air strafing", true};
-		CConVar<bool> bhopEnabled {"cs2ac_bhop_enabled", FCVAR_NONE, "Detect automated bunny hopping", true};
-		CConVar<bool> dllInjectionEnabled {"cs2ac_dll_injection_enabled", FCVAR_NONE, "Detect suspicious client event subscriptions", true};
-		CConVar<bool> desubtickingEnabled {"cs2ac_desubticking_enabled", FCVAR_NONE, "Detect commands that remove normal subtick timing", true};
-		CConVar<bool> doubletapEnabled {"cs2ac_doubletap_enabled", FCVAR_NONE, "Detect impossible rapid fire", true};
-		CConVar<bool> hyperscrollEnabled {"cs2ac_hyperscroll_enabled", FCVAR_NONE, "Detect automated jump-input frequency", true};
-		CConVar<bool> inhumanAccuracyEnabled {"cs2ac_inhuman_accuracy_enabled", FCVAR_NONE, "Detect sustained near-perfect accuracy", true};
-		CConVar<bool> invalidCvarEnabled {"cs2ac_invalid_cvar_enabled", FCVAR_NONE, "Detect unsafe client settings", true};
+		CConVar<bool> enabled {"cs2ac_enabled", FCVAR_NONE, "Enable or disable CS2AC", true, OnDetectionSettingChanged};
+		CConVar<bool> aimbotEnabled {"cs2ac_aimbot_enabled", FCVAR_NONE, "Detect damaging visible aim snaps", true, OnDetectionSettingChanged};
+		CConVar<bool> aimlockEnabled {"cs2ac_aimlock_enabled", FCVAR_NONE, "Detect unnaturally precise target tracking", true,
+									  OnDetectionSettingChanged};
+		CConVar<bool> antiaimEnabled {"cs2ac_antiaim_enabled", FCVAR_NONE, "Detect impossible or manipulated view angles", true,
+									  OnDetectionSettingChanged};
+		CConVar<bool> autostrafeEnabled {"cs2ac_autostrafe_enabled", FCVAR_NONE, "Detect automated air strafing", true, OnDetectionSettingChanged};
+		CConVar<bool> bhopEnabled {"cs2ac_bhop_enabled", FCVAR_NONE, "Detect automated bunny hopping", true, OnDetectionSettingChanged};
+		CConVar<bool> dllInjectionEnabled {"cs2ac_dll_injection_enabled", FCVAR_NONE, "Detect suspicious client event subscriptions", true,
+										   OnDetectionSettingChanged};
+		CConVar<bool> desubtickingEnabled {"cs2ac_desubticking_enabled", FCVAR_NONE, "Detect commands that remove normal subtick timing", true,
+										   OnDetectionSettingChanged};
+		CConVar<bool> doubletapEnabled {"cs2ac_doubletap_enabled", FCVAR_NONE, "Detect impossible rapid fire", true, OnDetectionSettingChanged};
+		CConVar<bool> hyperscrollEnabled {"cs2ac_hyperscroll_enabled", FCVAR_NONE, "Detect automated jump-input frequency", true,
+										  OnDetectionSettingChanged};
+		CConVar<bool> inhumanAccuracyEnabled {"cs2ac_inhuman_accuracy_enabled", FCVAR_NONE, "Detect sustained near-perfect accuracy", true,
+											  OnDetectionSettingChanged};
+		CConVar<bool> invalidCvarEnabled {"cs2ac_invalid_cvar_enabled", FCVAR_NONE, "Detect unsafe client settings", true, OnDetectionSettingChanged};
 		CConVar<bool> invalidInputEnabled {"cs2ac_invalid_input_enabled", FCVAR_NONE,
-										   "Detect movement button changes without matching subtick records", true};
+										   "Detect movement button changes without matching subtick records", true, OnDetectionSettingChanged};
 		CConVar<bool> irregularBehaviorEnabled {"cs2ac_irregular_behavior_enabled", FCVAR_NONE,
-												"Detect repeated success with unusually difficult shots", true};
-		CConVar<bool> namechangerEnabled {"cs2ac_namechanger_enabled", FCVAR_NONE, "Detect repeated player name changes", true};
-		CConVar<bool> nullsEnabled {"cs2ac_nulls_enabled", FCVAR_NONE, "Detect mechanically perfect airborne opposite-direction switches", true};
-		CConVar<bool> silentaimEnabled {"cs2ac_silentaim_enabled", FCVAR_NONE, "Detect damaging shots that disagree with the visible aim", true};
+												"Detect repeated success with unusually difficult shots", true, OnDetectionSettingChanged};
+		CConVar<bool> namechangerEnabled {"cs2ac_namechanger_enabled", FCVAR_NONE, "Detect repeated player name changes", true,
+										  OnDetectionSettingChanged};
+		CConVar<bool> nullsEnabled {"cs2ac_nulls_enabled", FCVAR_NONE, "Detect mechanically perfect airborne opposite-direction switches", true,
+									OnDetectionSettingChanged};
+		CConVar<bool> silentaimEnabled {"cs2ac_silentaim_enabled", FCVAR_NONE, "Detect damaging shots that disagree with the visible aim", true,
+										OnDetectionSettingChanged};
 		CConVar<bool> subtickSpamEnabled {"cs2ac_subtick_spam_enabled", FCVAR_NONE,
-										  "Detect repeated same-time button aliases carrying pitch or yaw changes", true};
+										  "Detect repeated same-time button aliases carrying pitch or yaw changes", true, OnDetectionSettingChanged};
 		CConVar<bool> chatAnnouncements {"cs2ac_chat_announcements", FCVAR_NONE, "Show CS2AC detections in public chat", true};
 		CConVar<bool> centerAnnouncements {"cs2ac_center_announcements", FCVAR_NONE, "Show CS2AC detections in the center of the screen", true};
 		CConVar<CUtlString> punishmentCommand {"cs2ac_punishment_command", FCVAR_NONE, "Command run for permanent-ban detections",
@@ -103,6 +121,7 @@ namespace
 												  CUtlString("")};
 		CConVar<CUtlString> webhookLogoUrl {"cs2ac_webhook_logo_url", FCVAR_NONE, "Public HTTPS URL for the logo shown in Discord reports",
 											CUtlString("")};
+		CConVar<CUtlString> language {"cs2ac_language", FCVAR_NONE, "Language used for public messages and Discord reports", CUtlString("en")};
 		CConVar<CUtlString> whitelist {"cs2ac_whitelist", FCVAR_NONE, "SteamID64s that CS2AC may detect but never punish", CUtlString(""),
 									   OnWhitelistChanged};
 
@@ -118,16 +137,14 @@ namespace
 												"Server command the Karasu CS2 plugin listens on for detection reports",
 												CUtlString("karasu_anticheat_report")};
 		CConVar<CUtlString> karasuEnforce {"cs2ac_karasu_enforce", FCVAR_NONE,
-										   "Karasu enforcement: 0 report only, 1 kick locally, 2 kick and ask the platform to ban",
-										   CUtlString("2")};
+										   "Karasu enforcement: 0 report only, 1 kick locally, 2 kick and ask the platform to ban", CUtlString("2")};
 		CConVar<CUtlString> karasuKickCommand {"cs2ac_karasu_kick_command", FCVAR_NONE,
 											   "Command used to remove a player the Karasu policy has judged a cheater",
 											   CUtlString("kickid {userid} Karasu Anti-Cheat")};
 		CConVar<CUtlString> karasuMinConfidence {"cs2ac_karasu_min_confidence", FCVAR_NONE,
 												 "Confidence a detection must reach to count toward corroboration (0-100)", CUtlString("72")};
 		CConVar<CUtlString> karasuSoloBanConfidence {"cs2ac_karasu_solo_ban_confidence", FCVAR_NONE,
-													 "Confidence at which one detection is enough to ban on its own (0-100)",
-													 CUtlString("55")};
+													 "Confidence at which one detection is enough to ban on its own (0-100)", CUtlString("55")};
 		CConVar<CUtlString> karasuCorroborationWindow {"cs2ac_karasu_corroboration_window", FCVAR_NONE,
 													   "Seconds a detection stays eligible to corroborate another one", CUtlString("1800")};
 	};
@@ -221,6 +238,7 @@ bool settings::Initialize()
 	if (!configuration)
 	{
 		configuration = new (std::nothrow) Configuration;
+		detectionMaskDirty = true;
 	}
 	return configuration != nullptr;
 }
@@ -232,16 +250,21 @@ void settings::Shutdown()
 	WhitelistedSteamIds().clear();
 	rejectedWhitelistEntries = 0;
 	duplicateWhitelistEntries = 0;
+	detectionMask = 0;
+	detectionMaskDirty = true;
+	pluginEnabled = false;
 }
 
 bool settings::IsPluginEnabled()
 {
-	return configuration && configuration->enabled.GetBool();
+	GetDetectionMask();
+	return pluginEnabled;
 }
 
 bool settings::IsDetectionEnabled(DetectionType detection)
 {
-	return IsPluginEnabled() && DetectionSetting(detection);
+	const auto index = static_cast<std::uint8_t>(detection);
+	return index < static_cast<std::uint8_t>(DetectionType::Count) && (GetDetectionMask() & (std::uint64_t {1} << index)) != 0;
 }
 
 bool settings::IsPlayerWhitelisted(std::uint64_t steamId)
@@ -278,21 +301,25 @@ std::size_t settings::GetEnabledDetectionCount()
 
 std::uint64_t settings::GetDetectionMask()
 {
-	if (!IsPluginEnabled())
+	if (!detectionMaskDirty)
 	{
-		return 0;
+		return detectionMask;
 	}
 
-	std::uint64_t mask = 0;
-	for (std::uint8_t index = 0; index < static_cast<std::uint8_t>(DetectionType::Count); ++index)
+	detectionMask = 0;
+	pluginEnabled = configuration && configuration->enabled.GetBool();
+	if (pluginEnabled)
 	{
-		const auto detection = static_cast<DetectionType>(index);
-		if (DetectionSetting(detection))
+		for (std::uint8_t index = 0; index < static_cast<std::uint8_t>(DetectionType::Count); ++index)
 		{
-			mask |= std::uint64_t {1} << index;
+			if (DetectionSetting(static_cast<DetectionType>(index)))
+			{
+				detectionMask |= std::uint64_t {1} << index;
+			}
 		}
 	}
-	return mask;
+	detectionMaskDirty = false;
+	return detectionMask;
 }
 
 std::uint64_t settings::GetRevision()
@@ -338,6 +365,11 @@ const char *settings::GetWebhookServerAddress()
 const char *settings::GetWebhookLogoUrl()
 {
 	return configuration ? configuration->webhookLogoUrl.Get().Get() : "";
+}
+
+const char *settings::GetLanguage()
+{
+	return configuration ? configuration->language.Get().Get() : "en";
 }
 
 bool settings::IsKarasuRelayEnabled()

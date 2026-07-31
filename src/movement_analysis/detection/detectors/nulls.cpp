@@ -18,8 +18,6 @@
 // If the player's underlap average is above this value, we won't consider them for nulls detection.
 // If 10% or more of their strafes have underlap, we should start taking the threshold below into consideration.
 #define UNDERLAP_MEDIAN_FORGIVENESS_THRESHOLD 0.02f // ~10% of a flat ground jump, considering 7.5 strafes on average
-#define MAX_INPUT_EVENTS                      2048
-
 CConVar<bool> cs2ac_nulls_debug("cs2ac_nulls_debug", FCVAR_NONE, "Show Nulls timing checks and evidence", false);
 
 void MovementDetectionService::CreateInputEvents(PlayerCommand *cmd)
@@ -114,7 +112,7 @@ void MovementDetectionService::CreateInputEvents(PlayerCommand *cmd)
 		}
 		events.push_back(event);
 		dirty = true;
-		if (events.size() > MAX_INPUT_EVENTS)
+		if (events.size() > maxNullInputEvents)
 		{
 			events.pop_front();
 		}
@@ -539,10 +537,24 @@ void MovementDetectionService::AnalyzeNullsForAxis(const std::deque<InputEvent> 
 	if (maxConsecutivePerfect >= adjustedRequiredPerfectCstrafes)
 	{
 		const char *axis = button1 == IN_FORWARD ? "forward/backward" : "left/right";
-		std::string details =
+		const std::string localizedAxis =
+			localization::Get(button1 == IN_FORWARD ? "evidence.nulls.axis.forward_backward" : "evidence.nulls.axis.left_right", axis);
+		localization::Text details {
 			tinyformat::format("The %s inputs reached a perfect-timing score of %u; %u was required. "
 							   "Median release-to-press gap: %.2f ms; overlap score: %u; measured FPS: %.2f.",
-							   axis, maxConsecutivePerfect, adjustedRequiredPerfectCstrafes, underlapMedian * 1000, numOverlaps, 1 / medianFramerate);
+							   axis, maxConsecutivePerfect, adjustedRequiredPerfectCstrafes, underlapMedian * 1000, numOverlaps, 1 / medianFramerate),
+			localization::Format(
+				"evidence.nulls",
+				"The {axis} inputs reached a perfect-timing score of {score}; {required} was required. Median release-to-press gap: {gap} ms; "
+				"overlap score: {overlaps}; measured FPS: {fps}.",
+				{{"axis", localizedAxis},
+				 {"score", tfm::format("%u", maxConsecutivePerfect)},
+				 {"required", tfm::format("%u", adjustedRequiredPerfectCstrafes)},
+				 {"gap", tfm::format("%.2f", underlapMedian * 1000)},
+				 {"overlaps", tfm::format("%u", numOverlaps)},
+				 {"fps", tfm::format("%.2f", 1 / medianFramerate)}})
+				.localized,
+		};
 		this->MarkInfraction(MovementDetectionService::Infraction::Type::Nulls, details);
 		if (button1 == IN_FORWARD)
 		{
