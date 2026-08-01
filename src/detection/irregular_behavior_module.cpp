@@ -23,7 +23,7 @@ namespace
 	constexpr float longDistance = 20.0f;
 	constexpr int detectionScore = 16;
 	constexpr int minimumSuccesses = 3;
-	constexpr int minimumAttempts = 5;
+	constexpr int minimumAttempts = 4;
 	constexpr size_t pendingLimit = 8;
 
 	bool IsSniperWeapon(std::string_view weapon)

@@ -22,12 +22,12 @@ CConVar<bool> cs2ac_aimlock_debug("cs2ac_aimlock_debug", FCVAR_NONE, "Show Aimlo
 
 namespace
 {
-	constexpr int trackingTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 1.5f);
+	constexpr int trackingTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 2.0f);
 	constexpr int rearmTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr int lagSearchRadius = 2;
 	constexpr float playerHalfWidth = 16.0f; // The CS2 player hull is 32 units wide; aim is measured from its center.
 	constexpr float minimumDistance = 200.0f;
-	constexpr float minimumTargetTravel = 48.0f; // One and a half player widths, converted to degrees at the episode's starting distance.
+	constexpr float minimumTargetTravel = 128.0f; // Four player widths, converted to degrees at the episode's starting distance.
 	constexpr float maximumInterpolationTicks = 19.0f;
 	constexpr int detectionThreshold = 3;
 	constexpr auto evidenceWindow = std::chrono::minutes(5);
@@ -517,7 +517,7 @@ namespace detection
 			const AimlockLagHypothesis *best = BestHypothesis(data.track, false);
 			if (best)
 			{
-				AIMLOCK_DEBUG("%s episode: %.1f/1.5 seconds, best fixed delay %d ticks kept %d/%d samples within the target width; "
+				AIMLOCK_DEBUG("%s episode: %.1f/2.0 seconds, best fixed delay %d ticks kept %d/%d samples within the target width; "
 							  "target moved %.1f/%.1f required degrees.\n",
 							  player->GetName(), static_cast<float>(elapsedTicks) / ENGINE_FIXED_TICK_RATE, best->lagTicks, best->onTargetSamples,
 							  data.track.samples, best->maximumTargetDisplacement, best->requiredTargetDisplacement);

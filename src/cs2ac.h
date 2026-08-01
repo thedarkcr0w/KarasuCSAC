@@ -9,6 +9,7 @@
 #include "version_gen.h"
 
 class WebhookService;
+class UpdaterService;
 class CMsgTEFireBullets;
 
 class CS2ACPlugin final : public ISmmPlugin, public IMetamodListener
@@ -112,8 +113,22 @@ private:
 
 	bool Activate(char *error, size_t maxlen, bool late);
 	KarasuOutcome EvaluateKarasuPolicy(const char *detection, MovementPlayer *player, std::uint64_t steamId, std::string_view evidence);
+	void ProcessJoinWatermarks();
 	void ResetRuntime();
 	void CleanupRuntime();
+
+	struct JoinWatermarkState
+	{
+		std::chrono::steady_clock::time_point showAt;
+		std::chrono::steady_clock::time_point expires;
+		std::chrono::steady_clock::time_point nextCenterSend;
+		int centerBroadcasts {};
+		bool pending {};
+		bool shown {};
+		bool centerPending {};
+		bool centerActive {};
+	};
+
 	bool loaded {};
 	bool activationPending {};
 	bool convarsRegistered {};
@@ -125,6 +140,8 @@ private:
 	std::string activationError;
 	detection::DetectionSystem detectionSystem;
 	WebhookService *webhook {};
+	UpdaterService *updater {};
+	std::array<JoinWatermarkState, MAXPLAYERS + 1> joinWatermarks {};
 	std::array<PunishmentLevel, MAXPLAYERS + 1> punishmentLevels {};
 	// Per-session corroboration ledger, one per slot. Cleared on disconnect so a
 	// slot cannot inherit the previous occupant's evidence. The durable,

@@ -60,6 +60,12 @@ namespace detection
 			SILENTAIM_DEBUG("%s shot rejected: tasers are not evaluated.\n", player->GetName());
 			return;
 		}
+		if (!shot.silentSubtickAnglesValid)
+		{
+			shot.silentRejected = true;
+			SILENTAIM_DEBUG("%s shot rejected: its subtick view movement was invalid.\n", player->GetName());
+			return;
+		}
 
 		constexpr float radiansToDegrees = static_cast<float>(180.0 / M_PI);
 		shot.silentAllowance =
@@ -71,9 +77,32 @@ namespace detection
 			return;
 		}
 
-		SILENTAIM_DEBUG("%s matched command %d to FireBullets weapon %u: deviation %.2f, allowance %.2f, inaccuracy %.5f, spread %.5f.\n",
-						player->GetName(), shot.commandNumber, shot.silentWeaponId, shot.silentDeviation, shot.silentAllowance, shot.silentInaccuracy,
-						shot.silentSpread);
+		const float pitchToBase = shot.baseAngles.x - shot.angles.x;
+		const float yawToBase = std::remainder(shot.baseAngles.y - shot.angles.y, 360.0f);
+		QAngle movementAdjusted = shot.angles;
+		movementAdjusted.x += std::copysign((std::min)(std::abs(pitchToBase), shot.silentSubtickPitchTravel), pitchToBase);
+		movementAdjusted.y += std::copysign((std::min)(std::abs(yawToBase), shot.silentSubtickYawTravel), yawToBase);
+		shot.silentUnsupportedDeviation = AngularDistance(shot.baseAngles, movementAdjusted);
+		const bool hasSubtickMovement = shot.silentSubtickPitchTravel > 0.0f || shot.silentSubtickYawTravel > 0.0f;
+		shot.silentMovementSupported =
+			hasSubtickMovement && std::isfinite(shot.silentUnsupportedDeviation) && shot.silentUnsupportedDeviation <= shot.silentAllowance;
+
+		if (shot.silentPreviousBaseValid && IsFinite(shot.silentPreviousBaseAngles))
+		{
+			// A legitimate firing angle lies on the reported path between adjacent base angles, so the two path legs
+			// should not be meaningfully longer than the direct angle between those commands.
+			const float previousToAttack = AngularDistance(shot.silentPreviousBaseAngles, shot.angles);
+			const float previousToCurrent = AngularDistance(shot.silentPreviousBaseAngles, shot.baseAngles);
+			shot.silentAdjacentPathExcess = (std::max)(0.0f, previousToAttack + shot.silentDeviation - previousToCurrent);
+			shot.silentMovementSupported =
+				shot.silentMovementSupported || (std::isfinite(shot.silentAdjacentPathExcess) && shot.silentAdjacentPathExcess <= minimumAllowance);
+		}
+
+		SILENTAIM_DEBUG("%s matched command %d to FireBullets weapon %u: deviation %.2f, allowance %.2f, unexplained %.2f, adjacent path "
+						"excess %.2f, subtick travel %.2f pitch/%.2f yaw, inaccuracy %.5f, spread %.5f.\n",
+						player->GetName(), shot.commandNumber, shot.silentWeaponId, shot.silentDeviation, shot.silentAllowance,
+						shot.silentUnsupportedDeviation, shot.silentPreviousBaseValid ? shot.silentAdjacentPathExcess : -1.0f,
+						shot.silentSubtickPitchTravel, shot.silentSubtickYawTravel, shot.silentInaccuracy, shot.silentSpread);
 	}
 
 	void SilentAimModule::OnGameFrame(int currentTick)
@@ -111,7 +140,7 @@ namespace detection
 			incidents.pop_front();
 		}
 
-		if (shot.silentDeviation <= shot.silentAllowance)
+		if (shot.silentDeviation <= shot.silentAllowance || shot.silentMovementSupported)
 		{
 			int remainingDecay = normalHitDecay;
 			while (remainingDecay > 0 && !incidents.empty())
@@ -129,15 +158,24 @@ namespace detection
 			{
 				total += incident.points;
 			}
-			SILENTAIM_DEBUG("%s confirmed hit was normal: %.2f <= %.2f degrees; score decayed by %d to %d/%d.\n", player->GetName(),
-							shot.silentDeviation, shot.silentAllowance, normalHitDecay - remainingDecay, total, detectionScore);
+			if (shot.silentMovementSupported && shot.silentDeviation > shot.silentAllowance)
+			{
+				SILENTAIM_DEBUG(
+					"%s confirmed hit was ignored: reported view movement explained the %.2f-degree mismatch; score decayed by %d to %d/%d.\n",
+					player->GetName(), shot.silentDeviation, normalHitDecay - remainingDecay, total, detectionScore);
+			}
+			else
+			{
+				SILENTAIM_DEBUG("%s confirmed hit was normal: %.2f <= %.2f degrees; score decayed by %d to %d/%d.\n", player->GetName(),
+								shot.silentDeviation, shot.silentAllowance, normalHitDecay - remainingDecay, total, detectionScore);
+			}
 			return;
 		}
 
 		const float excess = shot.silentDeviation - shot.silentAllowance;
 		const std::string_view weapon = NormalizeWeapon(shot.weapon);
 		const bool noscope = !shot.scoped && (weapon == "awp" || weapon == "ssg08" || weapon == "g3sg1" || weapon == "scar20");
-		const int points = (excess > blatantExcess ? 3
+		const int points = (excess > blatantExcess ? 4
 							: shot.airborne        ? 3
 												   : 2)
 						   + static_cast<int>(shot.headshot) + 2 * static_cast<int>(shot.wallbang) + 2 * static_cast<int>(shot.throughSmoke)

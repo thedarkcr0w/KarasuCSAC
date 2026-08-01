@@ -58,6 +58,8 @@ for source, target in (
   (os.path.join('licenses', 'CS2KZ-AGPL-3.0.txt'), 'CS2KZ-AGPL-3.0.txt'),
   (os.path.join('licenses', 'FUNCHOOK.txt'), 'FUNCHOOK.txt'),
   (os.path.join('licenses', 'DISTORM.txt'), 'DISTORM.txt'),
+  (os.path.join('licenses', 'PICOSHA2-MIT.txt'), 'PICOSHA2-MIT.txt'),
+  (os.path.join('licenses', 'MINIZ-MIT.txt'), 'MINIZ-MIT.txt'),
   (os.path.join('metamod-source', 'LICENSE.txt'), 'METAMOD-SOURCE.txt'),
   (os.path.join('hl2sdk-cs2', 'thirdparty', 'protobuf-3.21.8', 'LICENSE'),
    'PROTOBUF.txt'),

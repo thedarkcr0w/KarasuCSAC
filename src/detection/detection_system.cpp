@@ -100,6 +100,9 @@ namespace detection
 	{
 		data.commands.clear();
 		data.shots.clear();
+		data.lastViewCommandNumber = -1;
+		data.lastViewBaseAngles = {};
+		data.lastViewValid = false;
 		if (++data.generation == 0)
 		{
 			data.generation = 1;
@@ -139,32 +142,83 @@ namespace detection
 		for (int i = 0; i < numCommands; ++i)
 		{
 			PlayerCommand &command = commands[i];
-			const int attackIndex = command.attack1_start_history_index();
-			if (!command.has_base() || !command.base().has_viewangles() || attackIndex < 0 || attackIndex >= command.input_history_size()
-				|| !command.input_history(attackIndex).has_view_angles())
-			{
-				continue;
-			}
-			if (std::any_of(data.commands.rbegin(), data.commands.rend(),
-							[&](const ShotCommand &stored) { return stored.commandNumber == command.cmdNum; }))
+			if (!command.has_base() || !command.base().has_viewangles())
 			{
 				continue;
 			}
 
 			const auto &base = command.base();
 			const auto &baseView = base.viewangles();
-			const auto &attackView = command.input_history(attackIndex).view_angles();
 			const QAngle baseAngles(baseView.x(), baseView.y(), baseView.z());
-			const QAngle attackAngles(attackView.x(), attackView.y(), attackView.z());
-			if (!IsFinite(baseAngles) || !IsFinite(attackAngles))
+			if (!IsFinite(baseAngles))
 			{
 				continue;
 			}
 
-			data.commands.push_back({command.cmdNum, base.client_tick(), -1, baseAngles, attackAngles});
-			while (data.commands.size() > shotCommandLimit)
+			const int attackIndex = command.attack1_start_history_index();
+			const bool validAttackIndex = attackIndex >= 0 && attackIndex < command.input_history_size();
+			const bool hasAttackAngles = validAttackIndex && command.input_history(attackIndex).has_view_angles();
+			QAngle attackAngles;
+			if (hasAttackAngles)
 			{
-				data.commands.pop_front();
+				const auto &attackView = command.input_history(attackIndex).view_angles();
+				attackAngles = {attackView.x(), attackView.y(), attackView.z()};
+			}
+
+			if (hasAttackAngles && IsFinite(attackAngles)
+				&& !std::any_of(data.commands.rbegin(), data.commands.rend(),
+								[&](const ShotCommand &stored) { return stored.commandNumber == command.cmdNum; }))
+			{
+				ShotCommand captured {command.cmdNum, base.client_tick(), -1, baseAngles, attackAngles};
+				captured.previousBaseValid = data.lastViewValid && command.cmdNum == data.lastViewCommandNumber + 1;
+				if (captured.previousBaseValid)
+				{
+					captured.previousBaseAngles = data.lastViewBaseAngles;
+				}
+				for (int moveIndex = 0; moveIndex < base.subtick_moves_size(); ++moveIndex)
+				{
+					const auto &move = base.subtick_moves(moveIndex);
+					if (move.has_pitch_delta())
+					{
+						if (!std::isfinite(move.pitch_delta()))
+						{
+							captured.subtickAnglesValid = false;
+						}
+						else
+						{
+							captured.subtickPitchTravel += std::abs(move.pitch_delta());
+						}
+					}
+					if (move.has_yaw_delta())
+					{
+						if (!std::isfinite(move.yaw_delta()))
+						{
+							captured.subtickAnglesValid = false;
+						}
+						else
+						{
+							captured.subtickYawTravel += std::abs(move.yaw_delta());
+						}
+					}
+				}
+				if (!std::isfinite(captured.subtickPitchTravel) || !std::isfinite(captured.subtickYawTravel))
+				{
+					captured.subtickAnglesValid = false;
+					captured.subtickPitchTravel = 0.0f;
+					captured.subtickYawTravel = 0.0f;
+				}
+				data.commands.push_back(captured);
+				while (data.commands.size() > shotCommandLimit)
+				{
+					data.commands.pop_front();
+				}
+			}
+
+			if (!data.lastViewValid || command.cmdNum > data.lastViewCommandNumber)
+			{
+				data.lastViewCommandNumber = command.cmdNum;
+				data.lastViewBaseAngles = baseAngles;
+				data.lastViewValid = true;
 			}
 		}
 	}
@@ -220,7 +274,7 @@ namespace detection
 			{
 				continue;
 			}
-			frame.players[index] = {origin, eye, pawn->GetTeam(), true, pawn->IsAlive(), player->JustTeleported(5.0f)};
+			frame.players[index] = {origin, eye, pawn->GetTeam(), true, pawn->IsAlive(), player->JustTeleported(2.0f)};
 		}
 
 		if (!positionFrames.empty() && positionFrames.back().serverTick == currentTick)
@@ -315,6 +369,14 @@ namespace detection
 		shot.eyePosition = match->eyePosition;
 		shot.weapon.assign(weapon);
 		shot.fireTime = Clock::now();
+		shot.silentSubtickPitchTravel = match->subtickPitchTravel;
+		shot.silentSubtickYawTravel = match->subtickYawTravel;
+		shot.silentPreviousBaseValid = match->previousBaseValid;
+		if (shot.silentPreviousBaseValid)
+		{
+			shot.silentPreviousBaseAngles = match->previousBaseAngles;
+		}
+		shot.silentSubtickAnglesValid = match->subtickAnglesValid;
 		shot.airborne = match->airborne;
 		shot.scoped = match->scoped;
 		data.shots.push_back(std::move(shot));

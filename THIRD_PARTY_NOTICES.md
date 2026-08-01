@@ -11,6 +11,8 @@ CS2AC uses the following third-party software. Each project remains under its ow
 - [Funchook](https://github.com/kubo/funchook/tree/7cb8819594f0d586454011ab691fab4edb625068), vendored as headers and prebuilt x64 libraries. Funchook is licensed under GNU GPL version 2 or later with its documented linking exception. Its exact license text is included in `licenses/FUNCHOOK.txt`.
 - [diStorm 3.5.2b](https://github.com/gdabah/distorm/tree/3.5.2b), included in the vendored Funchook libraries. It is licensed under the BSD 3-Clause License. Its exact license text is included in `licenses/DISTORM.txt`.
 - [tinyformat](https://github.com/c42f/tinyformat), vendored as a header. It is licensed under the Boost Software License 1.0.
+- [PicoSHA2](https://github.com/okdshin/PicoSHA2/tree/161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29), used to verify automatic-update packages. It is licensed under the MIT License. Its exact license text is included in `licenses/PICOSHA2-MIT.txt`.
+- [miniz](https://github.com/richgel999/miniz/tree/77d0dce8627735138c51770d1799a1ef48f2117d), used to unpack verified automatic-update packages on both operating systems. It is licensed under the MIT License. Its exact license text is included in `licenses/MINIZ-MIT.txt`.
 - [Protocol Buffers](https://github.com/protocolbuffers/protobuf), supplied by the pinned Source 2 SDK and generated during the build. It is licensed under the BSD 3-Clause License.
 
 The upstream links above identify the corresponding source used by the vendored or modified components. Release archives include the applicable license texts under `addons/cs2ac/licenses`.

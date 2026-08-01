@@ -1,5 +1,6 @@
 #include "cs2ac.h"
 
+#include "karasu/karasu_policy.h"
 #include "localization.h"
 #include "movement_analysis/detection/movement_detection.h"
 #include "movement_analysis/player_context.h"
@@ -7,6 +8,7 @@
 #include "sdk/cgameresourceserviceserver.h"
 #include "sdk/navphysicsinterface.h"
 #include "settings.h"
+#include "updater.h"
 #include "webhook.h"
 #include "utils/addresses.h"
 #include "utils/ctimer.h"
@@ -300,6 +302,12 @@ CON_COMMAND(cs2ac_config_loaded, "Confirm that cs2ac.cfg finished loading")
 bool CS2ACPlugin::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool late)
 {
 	PLUGIN_SAVEVARS();
+	// See karasu::kAllowUpstreamAutoUpdate — a fork must not install upstream builds
+	// over itself. This also refuses to apply anything a previous build may have staged.
+	if constexpr (karasu::kAllowUpstreamAutoUpdate)
+	{
+		UpdaterService::ApplyPendingUpdate();
+	}
 	if (!settings::Initialize())
 	{
 		if (error && maxlen)
@@ -315,6 +323,18 @@ bool CS2ACPlugin::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, b
 		if (error && maxlen)
 		{
 			snprintf(error, maxlen, "CS2AC could not reserve memory for Discord reports.");
+		}
+		return false;
+	}
+	updater = new (std::nothrow) UpdaterService;
+	if (!updater)
+	{
+		delete webhook;
+		webhook = nullptr;
+		settings::Shutdown();
+		if (error && maxlen)
+		{
+			snprintf(error, maxlen, "CS2AC could not reserve memory for automatic updates.");
 		}
 		return false;
 	}
@@ -504,6 +524,14 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	}
 
 	loaded = true;
+	// Start() is what schedules the first release poll. Skipping it is not enough on
+	// its own — OnGameFrame fires whenever now() >= nextCheck, and a default-constructed
+	// nextCheck is the clock epoch, so an unstarted updater would poll IMMEDIATELY.
+	// The OnGameFrame call site is guarded too; both guards are required.
+	if constexpr (karasu::kAllowUpstreamAutoUpdate)
+	{
+		updater->Start();
+	}
 	ResetRuntime();
 	configReloadPending = true;
 	configLoadFailed = false;
@@ -605,6 +633,14 @@ void CS2ACPlugin::OnGameFrame(bool simulating)
 	{
 		webhook->OnGameFrame();
 	}
+	if constexpr (karasu::kAllowUpstreamAutoUpdate)
+	{
+		if (updater)
+		{
+			updater->OnGameFrame();
+		}
+	}
+	ProcessJoinWatermarks();
 }
 
 void CS2ACPlugin::OnGameEvent(IGameEvent *event, MovementPlayer *player)
@@ -869,7 +905,15 @@ CS2ACPlugin::KarasuOutcome CS2ACPlugin::EvaluateKarasuPolicy(const char *detecti
 
 void CS2ACPlugin::OnClientFullyConnect(CPlayerSlot slot)
 {
-	detectionSystem.OnClientReady(g_pCS2ACPlayerManager->ToPlayer(slot));
+	auto *player = g_pCS2ACPlayerManager->ToPlayer(slot);
+	detectionSystem.OnClientReady(player);
+	const int index = slot.Get() + 1;
+	if (player && index > 0 && index <= MAXPLAYERS && !player->IsFakeClient() && !player->IsCSTV() && !joinWatermarks[index].shown
+		&& !joinWatermarks[index].pending)
+	{
+		joinWatermarks[index].showAt = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+		joinWatermarks[index].pending = true;
+	}
 }
 
 void CS2ACPlugin::OnClientSettingsChanged(CPlayerSlot slot)
@@ -882,6 +926,11 @@ void CS2ACPlugin::OnClientDisconnect(CPlayerSlot slot)
 	auto *player = g_pCS2ACPlayerManager->ToPlayer(slot);
 	const std::string playerName = player ? SanitizeConsoleText(player->GetName()) : "<unknown>";
 	detectionSystem.OnClientDisconnect(player);
+	const int index = slot.Get() + 1;
+	if (index > 0 && index <= MAXPLAYERS)
+	{
+		joinWatermarks[index] = {};
+	}
 	if (player)
 	{
 		punishmentLevels[player->index] = PunishmentLevel::None;
@@ -889,6 +938,62 @@ void CS2ACPlugin::OnClientDisconnect(CPlayerSlot slot)
 		// the player - otherwise the next occupant inherits their strikes.
 		karasuVerdicts[player->index].Reset();
 		Msg("[CS2AC] Cleared %s's detection evidence because they disconnected.\n", playerName.c_str());
+	}
+}
+
+void CS2ACPlugin::ProcessJoinWatermarks()
+{
+	const auto now = std::chrono::steady_clock::now();
+	for (int index = 1; index <= MAXPLAYERS; ++index)
+	{
+		auto &state = joinWatermarks[index];
+		if (!state.pending && !state.centerPending && !state.centerActive)
+		{
+			continue;
+		}
+		auto *player = g_pCS2ACPlayerManager->ToPlayer(static_cast<u32>(index));
+		if (!player || !player->IsConnected() || player->IsFakeClient() || player->IsCSTV())
+		{
+			state = {};
+			continue;
+		}
+		if (state.pending && now >= state.showAt && player->IsInGame())
+		{
+			state.pending = false;
+			state.shown = true;
+			state.centerPending = true;
+			utils::AnnounceWatermarkTo(player->GetPlayerSlot(), false);
+		}
+		if (state.centerPending && player->IsInGame() && !utils::IsDetectionAnnouncementActive())
+		{
+			state.centerPending = false;
+			utils::AnnounceWatermarkTo(player->GetPlayerSlot(), true);
+			state.centerActive = true;
+			state.expires = now + std::chrono::seconds(3);
+			state.nextCenterSend = now + std::chrono::milliseconds(100);
+			state.centerBroadcasts = 1;
+		}
+		if (!state.centerActive)
+		{
+			continue;
+		}
+		if (utils::IsDetectionAnnouncementActive() || !player->IsInGame())
+		{
+			state.centerActive = false;
+			continue;
+		}
+		if (now >= state.expires)
+		{
+			utils::ClearWatermarkFor(player->GetPlayerSlot());
+			state.centerActive = false;
+			continue;
+		}
+		if (now >= state.nextCenterSend && state.centerBroadcasts < 31)
+		{
+			utils::AnnounceWatermarkTo(player->GetPlayerSlot(), true);
+			state.nextCenterSend = now + std::chrono::milliseconds(100);
+			++state.centerBroadcasts;
+		}
 	}
 }
 
@@ -1257,6 +1362,12 @@ void CS2ACPlugin::CleanupRuntime()
 	// Re-seeds the relay nonce, so a reload cannot reuse an idempotency key that the
 	// platform has already recorded against a previous detection.
 	karasu::relay::Reset();
+	if (updater)
+	{
+		updater->Unload();
+		delete updater;
+		updater = nullptr;
+	}
 	bool sourceHooksRemoved = hooks::Cleanup();
 	utils::ResetDetectionAnnouncement();
 	RemoveAllTimers();
@@ -1286,6 +1397,7 @@ void CS2ACPlugin::CleanupRuntime()
 	simulatingPhysics = false;
 	serverGlobals = {};
 	punishmentLevels.fill(PunishmentLevel::None);
+	joinWatermarks.fill({});
 	utils::Cleanup();
 	modules::Cleanup();
 	activationPending = false;

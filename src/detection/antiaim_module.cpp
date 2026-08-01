@@ -581,11 +581,11 @@ namespace detection
 		found->serverTick = currentTick;
 
 		auto *cs2acPlayer = g_pCS2ACPlayerManager->ToPlayer(static_cast<u32>(player->index));
-		if (cs2acPlayer && cs2acPlayer->JustTeleported(5.0f))
+		if (cs2acPlayer && cs2acPlayer->JustTeleported(2.0f))
 		{
 			if (!data.teleportGrace)
 			{
-				ANTIAIM_DEBUG("%s is inside the five-second spawn or teleport grace period.\n", player->GetName());
+				ANTIAIM_DEBUG("%s is inside the two-second spawn or teleport grace period.\n", player->GetName());
 			}
 			data.teleportGrace = true;
 			data.invalidActive = data.inconsistencyActive = data.spinActive = data.jitterActive = false;

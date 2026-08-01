@@ -78,7 +78,9 @@ binary.compiler.cxxincludes += [
 binary.sources += [
   os.path.join(sdk['path'], 'entity2', 'entityidentity.cpp'),
   os.path.join(sdk['path'], 'entity2', 'entitysystem.cpp'),
+  os.path.join(builder.sourcePath, 'src', 'vendor', 'miniz.c'),
 ]
+binary.compiler.defines += ['MINIZ_NO_ARCHIVE_WRITING_APIS', 'MINIZ_NO_ZLIB_APIS']
 binary.sources += collectPluginSources(cxx.target.platform)
 binary.compiler.postlink.insert(0, protobuf)
 binary.compiler.sourcedeps += [protobuf]

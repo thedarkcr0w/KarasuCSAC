@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/refs/heads/main/schemas/devContainer.schema.json",
+ "dockerComposeFile": "docker-compose.yml",
+  "service": "self",
+  "workspaceFolder": "/workspaces/CS2AC"
+}

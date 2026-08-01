@@ -1,0 +1,31 @@
+services:
+  self:
+    image: self
+    build: .
+    command: sleep infinity
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    networks:
+      - docker
+    volumes:
+      - docker-certs-client:/certs/client:ro
+      - ../:/workspaces/CS2AC
+  docker:
+    hostname: docker
+    image: docker:29.6-dind-rootless
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    networks:
+      - docker
+    volumes:
+      #- docker-certs-ca:/certs/ca
+      - docker-certs-client:/certs/client
+      - ../:/workspaces/CS2AC
+
+networks:
+  docker:
+
+volumes:
+  # docker-certs-ca:
+  docker-certs-client:

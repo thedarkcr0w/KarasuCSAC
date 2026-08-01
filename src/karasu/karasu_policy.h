@@ -25,6 +25,19 @@
 
 namespace karasu
 {
+	// Upstream 1.0.10 added a self-updater that polls karola3vax/CS2AC releases every
+	// 6 hours and swaps its own cs2ac.so in place. On a FORK that is destructive: it
+	// would overwrite this build with stock upstream, deleting the karasu_anticheat_report
+	// relay, the policy table below, and the [KarasuAC] branding — silently, because a
+	// stock CS2AC still loads and still logs detections. Autobans would simply stop
+	// while the plugin looked healthy.
+	//
+	// Upstream exposes no cvar for this, so the kill is compile-time and the call sites
+	// in cs2ac.cpp are guarded on it. Karasu ships plugin updates through the DatHost
+	// bundle instead. Leave this false — if it is ever flipped, this fork stops being
+	// the thing that runs.
+	inline constexpr bool kAllowUpstreamAutoUpdate = false;
+
 	enum class Tier : std::uint8_t
 	{
 		A,

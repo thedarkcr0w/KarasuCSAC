@@ -249,7 +249,7 @@ static int detectionHtmlBroadcasts;
 static int detectionHtmlDuration = 5;
 static constexpr int maximumDetectionHtmlBroadcasts = 51;
 
-static void SendDetectionHtml(const char *message, int duration)
+static void SendDetectionHtml(const char *message, int duration, IRecipientFilter *recipientFilter = nullptr)
 {
 	if (!interfaces::pGameEventManager || !interfaces::pGameEventSystem || !g_pNetworkMessages)
 	{
@@ -271,9 +271,10 @@ static void SendDetectionHtml(const char *message, int duration)
 	event->SetInt("userid", -1);
 
 	auto *data = networkMessage->AllocateMessage()->ToPB<CMsgSource1LegacyGameEvent>();
-	CBroadcastRecipientFilter filter;
+	CBroadcastRecipientFilter broadcastFilter;
+	IRecipientFilter *filter = recipientFilter ? recipientFilter : &broadcastFilter;
 	interfaces::pGameEventManager->SerializeEvent(event, data);
-	interfaces::pGameEventSystem->PostEventAbstract(-1, false, &filter, networkMessage, data, 0);
+	interfaces::pGameEventSystem->PostEventAbstract(-1, false, filter, networkMessage, data, 0);
 	delete data;
 	interfaces::pGameEventManager->FreeEvent(event);
 }
@@ -438,20 +439,36 @@ void utils::AnnounceTest()
 	Msg("[CS2AC] Test announcement finished: %s\n", text);
 }
 
-void utils::AnnounceWatermark()
+void utils::AnnounceWatermarkTo(CPlayerSlot slot, bool centerOnly)
 {
-	const std::string chatBody = localization::Watermark({{"author", "{grey}%s1{default}"}}).localized;
-	const std::string chatTemplate = inGameChatTag + chatBody;
-	char coloredChat[256];
-	if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
+	CSingleRecipientFilter filter(slot);
+	if (!centerOnly)
 	{
-		CBroadcastRecipientFilter filter;
-		ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "karola3vax", "", "", "");
+		const std::string chatBody = localization::Watermark({{"author", "{grey}%s1{default}"}}).localized;
+		const std::string chatTemplate = inGameChatTag + chatBody;
+		char coloredChat[256];
+		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
+		{
+			ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "karola3vax", "", "", "");
+		}
+		return;
 	}
 
 	std::string centerBody = EscapeHtml(localization::Watermark().localized.c_str());
 	ReplaceAll(centerBody, "{author}", "<span color='#B0B0B0'>karola3vax</span>");
-	ShowCenterMessage(inGameCenterOpen + centerBody + inGameCenterClose, false, true, 3);
+	const std::string message = inGameCenterOpen + centerBody + inGameCenterClose;
+	SendDetectionHtml(message.c_str(), 3, &filter);
+}
+
+void utils::ClearWatermarkFor(CPlayerSlot slot)
+{
+	CSingleRecipientFilter filter(slot);
+	SendDetectionHtml("<font></font>", 1, &filter);
+}
+
+bool utils::IsDetectionAnnouncementActive()
+{
+	return detectionHtmlIsDetection && std::chrono::steady_clock::now() < detectionHtmlExpires;
 }
 
 void utils::ResetDetectionAnnouncement()

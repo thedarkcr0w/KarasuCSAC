@@ -9,7 +9,7 @@ CConVar<bool> cs2ac_doubletap_debug("cs2ac_doubletap_debug", FCVAR_NONE, "Show D
 
 namespace
 {
-	constexpr int detectionThreshold = 3;
+	constexpr int detectionThreshold = 2;
 
 	void MergeNetworkEvidence(detection::NetworkSafetyEvidence &combined, const detection::NetworkSafetyEvidence &current)
 	{

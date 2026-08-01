@@ -19,19 +19,18 @@ namespace
 	constexpr auto networkSampleInterval = std::chrono::milliseconds(100);
 
 	constexpr bool ShouldVeto(float ping, float jitter, float incomingLoss, float outgoingLoss, float incomingChoke, float outgoingChoke,
-							  int commandGaps, int unavailableSamples)
+							  int unavailableSamples)
 	{
 		return ping >= maximumPingMilliseconds || jitter >= maximumJitterMilliseconds || incomingLoss >= maximumLoss || outgoingLoss >= maximumLoss
-			   || incomingChoke >= maximumChoke || outgoingChoke >= maximumChoke || commandGaps > 0 || unavailableSamples > 0;
+			   || incomingChoke >= maximumChoke || outgoingChoke >= maximumChoke || unavailableSamples > 0;
 	}
 
-	static_assert(!ShouldVeto(149.9f, 24.9f, 0.019f, 0.019f, 0.019f, 0.019f, 0, 0));
-	static_assert(ShouldVeto(150.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0, 0));
-	static_assert(ShouldVeto(0.0f, 25.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0, 0));
-	static_assert(ShouldVeto(0.0f, 0.0f, 0.02f, 0.0f, 0.0f, 0.0f, 0, 0));
-	static_assert(ShouldVeto(0.0f, 0.0f, 0.0f, 0.0f, 0.02f, 0.0f, 0, 0));
-	static_assert(ShouldVeto(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0));
-	static_assert(ShouldVeto(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0, 1));
+	static_assert(!ShouldVeto(149.9f, 24.9f, 0.019f, 0.019f, 0.019f, 0.019f, 0));
+	static_assert(ShouldVeto(150.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0));
+	static_assert(ShouldVeto(0.0f, 25.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0));
+	static_assert(ShouldVeto(0.0f, 0.0f, 0.02f, 0.0f, 0.0f, 0.0f, 0));
+	static_assert(ShouldVeto(0.0f, 0.0f, 0.0f, 0.0f, 0.02f, 0.0f, 0));
+	static_assert(ShouldVeto(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1));
 
 	detection::NetworkSafetySample CaptureSample(MovementPlayer *player, detection::Clock::time_point now)
 	{
@@ -218,8 +217,9 @@ namespace detection
 			evidence.jitterMilliseconds = totalVariation / variationSamples;
 		}
 
+		// ProcessUsercmds may batch or replay commands, so command discontinuities are useful diagnostics but not proof of a bad connection.
 		evidence.vetoed = ShouldVeto(evidence.pingMilliseconds, evidence.jitterMilliseconds, evidence.incomingLoss, evidence.outgoingLoss,
-									 evidence.incomingChoke, evidence.outgoingChoke, evidence.commandGaps, evidence.unavailableSamples);
+									 evidence.incomingChoke, evidence.outgoingChoke, evidence.unavailableSamples);
 		return evidence;
 	}
 

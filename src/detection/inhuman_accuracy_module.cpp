@@ -19,8 +19,8 @@ CConVar<bool> cs2ac_inhuman_accuracy_debug("cs2ac_inhuman_accuracy_debug", FCVAR
 namespace
 {
 	constexpr int evidenceWindowSeconds = 5 * 60;
-	constexpr int minimumAttempts = 15;
-	constexpr int requiredAccuracyPercent = 85;
+	constexpr int minimumAttempts = 40;
+	constexpr int requiredAccuracyPercent = 90;
 	constexpr float minimumDistance = 100.0f;
 	constexpr float attemptHalfWidth = 32.0f;
 	static_assert(requiredAccuracyPercent <= 100);
