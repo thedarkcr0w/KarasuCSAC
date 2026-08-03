@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Поріг досягнуто після {incidents} різких доведень із влучанням; останнє було поверненням на {snap}°."
 	"evidence.aimbot.convergence"	"Поріг досягнуто після {incidents} різких доведень із влучанням; останнє доведення — {snap}°, похибка до цілі зменшилася з {before}° до {after}°."
+	"evidence.aimbot.smooth"	"Поріг досягнуто після {incidents} плавних рухів прицілу із завданням шкоди; останній рух — {snap}°, похибка до цілі зменшилася з {before}° до {after}°."
 	"evidence.aimlock"	"Поріг досягнуто після {incidents} епізодів точного супроводу; в останньому при русі цілі на {movement}° із потрібних {required}° приціл тримався на ній у {precise} з {samples} вимірів."
 	"evidence.silentaim"	"Відхилення на {deviation}° від видимого прицілу додало {points} балів; накопичений рахунок досяг {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"Влучань: {hits} із {attempts} врахованих пострілів (точність {accuracy}%)."
 	"evidence.irregular_behavior"	"Набрано {score} балів: {successes} складних влучань із {attempts} спроб (успішність {accuracy}%)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"Причина «{reason}» додала {points} балів; докази досягли {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"безперервне обертання"

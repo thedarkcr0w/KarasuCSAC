@@ -110,6 +110,19 @@ namespace karasu
 				return {Tier::B, Family::Protocol, 84};
 			// Damaging angle snaps converging on an enemy. A genuine flick that
 			// overshoots and corrects can match the same shape.
+			//
+			// Upstream 1.0.11 added a SECOND, independent way for this detector to fire:
+			// a "smooth convergence" rule with its own evidence counter (3 incidents in
+			// 5 minutes, separate from the snap counter). Its envelope is fitted to a
+			// single confirmed-cheat demo with almost no margin - it requires >=13.0
+			// degrees of travel where the demo's minimum was 13.66, and >=94% path
+			// efficiency where the demo's minimum was 94.6 - against one hand-picked
+			// negative control. Its "steps shrink toward the target" requirement is also
+			// a fair description of the human ballistic-then-corrective mouse profile.
+			// Reviewed and kept live at 82 deliberately, so smooth convergence bans on a
+			// single announce like every other AIMBOT detection. If false positives turn
+			// up, this number is the dial - and cs2ac_aimbot_debug prints exactly which
+			// rule matched, so check whether they are all "smooth curve" before retuning.
 			case DetectionType::Aimbot:
 				return {Tier::B, Family::Aim, 82};
 			// Consecutive perfect counter-strafes. The threshold adapts to the
@@ -134,7 +147,7 @@ namespace karasu
 				return {Tier::B, Family::Movement, 76};
 
 			// --- Tier C: weaker evidence, lowest confidence -------------------------
-			// Fires on ANY ONE of 118 hardcoded client event subscriptions with zero
+			// Fires on ANY ONE of 117 hardcoded client event subscriptions with zero
 			// accumulation and no latch - and that list includes player_jump,
 			// door_open and gc_connected, so a legitimate overlay or a Valve client
 			// change can trip it. Highest false-positive risk in the codebase, and
@@ -147,6 +160,22 @@ namespace karasu
 			// a whole map still trip it. Promote only once it has an evidence window.
 			case DetectionType::Doubletap:
 				return {Tier::C, Family::Aim, 50};
+			// Fires when damaging shots repeatedly land 0-2 ticks (0-31ms) after the
+			// crosshair first touches an enemy - far below human reaction time. The
+			// plumbing is the best of any behavioural detector here: the shot must
+			// deal health damage to the exact target predicted at contact, the network
+			// monitor vetoes fail-closed, shots through smoke are dropped, and ordinary
+			// 3+ tick duels subtract from the score, so normal play actively cancels it.
+			// What it measures is still soft. The contact trace is NOT lag compensated,
+			// so steady latency skews the tick count without tripping the veto (which
+			// only fires at 150ms, 25ms jitter or 2% loss), and there is no minimum
+			// distance gate of the kind Aimbot and Aimlock both carry. Pre-firing a
+			// held angle on a sound cue lands in the 0-1 tick bucket by construction.
+			// Below the solo bar deliberately: it takes three separate fires - 15 such
+			// shots - before the repeat bonus carries it past 55. Measure the reaction
+			// distribution with cs2ac_triggerbot_debug before promoting it.
+			case DetectionType::Triggerbot:
+				return {Tier::C, Family::Aim, 48};
 			// A strong human on close-range SMG duels reaches this hit rate, and the
 			// weapon whitelist includes p90 and mac10. "Review this player", not proof.
 			case DetectionType::InhumanAccuracy:
@@ -237,9 +266,9 @@ namespace karasu
 	// its tier. This is the main dial (cs2ac_karasu_solo_ban_confidence).
 	//
 	// At the default of 55 that is every detector except DOUBLETAP (50),
-	// INHUMAN ACCURACY (45), IRREGULAR BEHAVIOR (45) and NAMECHANGER (30), which
-	// still need a second signal - either a different detector from a different
-	// family, or the same detector firing again.
+	// TRIGGERBOT (48), INHUMAN ACCURACY (45), IRREGULAR BEHAVIOR (45) and
+	// NAMECHANGER (30), which still need a second signal - either a different
+	// detector from a different family, or the same detector firing again.
 	//
 	// Lower it to 30 and literally every detector bans on its own; raise it to 76
 	// and only the aim/movement/protocol detectors do; raise it to 90 and only the

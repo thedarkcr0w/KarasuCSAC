@@ -52,7 +52,7 @@ namespace
 		}
 		const char *name = event->GetName();
 		return CS2AC_STREQ(name, "weapon_fire") || CS2AC_STREQ(name, "player_hurt") || CS2AC_STREQ(name, "player_death")
-			   || CS2AC_STREQ(name, "player_spawn");
+			   || CS2AC_STREQ(name, "player_spawn") || CS2AC_STREQ(name, "smokegrenade_detonate");
 	}
 
 	MovementPlayer *ResolveEventPlayer(IGameEvent *event)

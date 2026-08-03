@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"تم بلوغ الحد بعد {incidents} حركات تصويب مفاجئة مع إصابة؛ وكانت الأخيرة عودة بمقدار {snap}°."
 	"evidence.aimbot.convergence"	"تم بلوغ الحد بعد {incidents} حركات تصويب مفاجئة مع إصابة؛ الحركة الأخيرة {snap}°، وخطأ الهدف {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"تم بلوغ الحد بعد {incidents} حركات تصويب سلسة أدت إلى ضرر؛ الحركة الأخيرة {snap}°، وخطأ الهدف {before}° -> {after}°."
 	"evidence.aimlock"	"تم بلوغ الحد بعد {incidents} فترات تتبع دقيق؛ في الأخيرة بقي التصويب على الهدف في {precise}/{samples} عينة بينما تحرك الهدف {movement}° مقابل {required}° المطلوبة."
 	"evidence.silentaim"	"أضاف انحراف قدره {deviation}° عن التصويب الظاهر {points} نقاط؛ ووصل الرصيد المتحرك إلى {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"أصابت {hits} من أصل {attempts} طلقة مؤهلة (دقة {accuracy}%)."
 	"evidence.irregular_behavior"	"{score} نقاط من {successes} طلقات صعبة ناجحة ضمن {attempts} محاولة (نجاح {accuracy}%)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"أضاف «{reason}» مقدار {points} نقاط؛ ووصلت الأدلة إلى {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"دوران مستمر"

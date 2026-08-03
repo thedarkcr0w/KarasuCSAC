@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Lävi saavutati pärast {incidents} järsku tabamusega sihtimisliigutust; viimane oli {snap}° tagasiliikumine."
 	"evidence.aimbot.convergence"	"Lävi saavutati pärast {incidents} järsku tabamusega sihtimisliigutust; viimane liikumine {snap}°, sihtmärgi viga {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Lävi saavutati pärast {incidents} sujuvat kahjustusega sihtimisliigutust; viimane liikumine {snap}°, sihtmärgi viga {before}° -> {after}°."
 	"evidence.aimlock"	"Lävi saavutati pärast {incidents} täpset jälgimisperioodi; viimati püsis sihik sihtmärgil {precise}/{samples} mõõtmises, kui see liikus {movement}° nõutud {required}° vastu."
 	"evidence.silentaim"	"{deviation}° kõrvalekalle nähtavast sihikust lisas {points} punkti; jooksev tulemus jõudis {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits}/{attempts} arvestatud lasust tabas ({accuracy}% täpsus)."
 	"evidence.irregular_behavior"	"{score} punkti: {successes} õnnestunud rasket lasku {attempts} katsest ({accuracy}% edu)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}“ lisas {points} punkti; tõendid jõudsid {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"pidev pöörlemine"

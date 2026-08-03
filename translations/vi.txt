@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Đạt ngưỡng sau {incidents} lần kéo tâm đột ngột kèm trúng đạn; lần gần nhất là kéo rồi trả lại {snap}°."
 	"evidence.aimbot.convergence"	"Đạt ngưỡng sau {incidents} lần kéo tâm đột ngột kèm trúng đạn; lần gần nhất {snap}°, sai số tới mục tiêu {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Đạt ngưỡng sau {incidents} lần di chuyển tâm mượt gây sát thương; lần gần nhất {snap}°, sai số tới mục tiêu {before}° -> {after}°."
 	"evidence.aimlock"	"Đạt ngưỡng sau {incidents} giai đoạn bám mục tiêu chính xác; ở lần gần nhất, tâm ngắm nằm trên mục tiêu trong {precise}/{samples} mẫu khi mục tiêu di chuyển {movement}° so với yêu cầu {required}°."
 	"evidence.silentaim"	"Độ lệch {deviation}° so với tâm ngắm hiển thị đã thêm {points} điểm; điểm tích lũy đạt {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"Trúng {hits} trong {attempts} phát đạn hợp lệ (độ chính xác {accuracy}%)."
 	"evidence.irregular_behavior"	"{score} điểm từ {successes} phát đạn khó thành công trong {attempts} lần thử (tỷ lệ {accuracy}%)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"“{reason}” đã thêm {points} điểm; bằng chứng đạt {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"xoay liên tục"

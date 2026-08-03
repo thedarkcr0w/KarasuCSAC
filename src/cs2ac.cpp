@@ -1006,6 +1006,19 @@ void CS2ACPlugin::PrintConfigSummary(bool reloaded) const
 		settings::GetDuplicateWhitelistCount());
 	Msg("[CS2AC] Public announcements: chat %s, center screen %s.\n", settings::ShowChatAnnouncements() ? "on" : "off",
 		settings::ShowCenterAnnouncements() ? "on" : "off");
+	// Report what the build actually does, not what the cvar says. Upstream 1.0.11 added
+	// cs2ac_auto_update, but this fork compiles the updater out entirely (see
+	// karasu::kAllowUpstreamAutoUpdate), so the cvar can read 1 while nothing ever polls.
+	// This is the line an operator checks to confirm the build will not replace itself
+	// with stock upstream, so it must not say "on" when the updater cannot run.
+	if constexpr (karasu::kAllowUpstreamAutoUpdate)
+	{
+		Msg("[CS2AC] Automatic updates: %s.\n", settings::AutomaticUpdatesEnabled() ? "on" : "off");
+	}
+	else
+	{
+		Msg("[CS2AC] Automatic updates: off, compiled out of this Karasu build.\n");
+	}
 	Msg("[CS2AC] Punishments: permanent ban %s, kick %s.\n",
 		settings::GetPunishmentCommand() && *settings::GetPunishmentCommand() ? "configured" : "disabled",
 		settings::GetKickCommand() && *settings::GetKickCommand() ? "configured" : "disabled");

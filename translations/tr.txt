@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"{incidents} ani nişan-isabet olayı eşiğe ulaştı; son olay {snap} derecelik ani dönüşlü nişandı."
 	"evidence.aimbot.convergence"	"{incidents} ani nişan-isabet olayı eşiğe ulaştı; son nişan hareketi {snap} dereceydi, hedef hatası {before} -> {after} dereceye indi."
+	"evidence.aimbot.smooth"	"{incidents} yumuşak nişan hareketi hasarla sonuçlanarak eşiğe ulaştı; son hareket {snap} dereceydi, hedef hatası {before} -> {after} dereceye indi."
 	"evidence.aimlock"	"{incidents} kusursuz takip olayı eşiğe ulaştı; son olayda hedef {required} derecelik hareket şartına karşı {movement} derece hareket ederken nişan {precise}/{samples} örnek boyunca hedefte kaldı."
 	"evidence.silentaim"	"Görünür nişandan {deviation} derecelik sapma {points} puan ekledi; biriken puan {score}/{threshold} oldu."
 	"evidence.inhuman_accuracy"	"Değerlendirilen {attempts} atışın {hits} tanesi isabet etti (%{accuracy} isabet)."
 	"evidence.irregular_behavior"	"{attempts} zor atışın {successes} tanesi başarılı oldu (%{accuracy} başarı) ve {score} puan toplandı."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"{reason}, {points} puan ekledi ve kanıt {score}/{threshold} seviyesine ulaştı."
 	"evidence.antiaim.reason.spin"	"kesintisiz dönme"

@@ -1,5 +1,6 @@
 #include "updater.h"
 
+#include "settings.h"
 #include "vendor/miniz.h"
 #include "vendor/picosha2.h"
 #include "version_gen.h"
@@ -489,6 +490,14 @@ void UpdaterService::Unload()
 
 void UpdaterService::OnGameFrame()
 {
+	if (!settings::AutomaticUpdatesEnabled())
+	{
+		if (request != INVALID_HTTPREQUEST_HANDLE)
+		{
+			CancelRequest();
+		}
+		return;
+	}
 	if (request == INVALID_HTTPREQUEST_HANDLE && std::chrono::steady_clock::now() >= nextCheck)
 	{
 		CheckRelease();
@@ -553,6 +562,11 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 {
 	if (!result || result->m_hRequest != request)
 	{
+		return;
+	}
+	if (!settings::AutomaticUpdatesEnabled())
+	{
+		CancelRequest();
 		return;
 	}
 	const RequestKind completedKind = requestKind;

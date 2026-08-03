@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Прагът беше достигнат след {incidents} резки насочвания с попадение; последното беше връщане с {snap}°."
 	"evidence.aimbot.convergence"	"Прагът беше достигнат след {incidents} резки насочвания с попадение; последно движение {snap}°, грешка към целта {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Прагът беше достигнат след {incidents} плавни движения на прицела с нанесени щети; последно движение {snap}°, грешка към целта {before}° -> {after}°."
 	"evidence.aimlock"	"Прагът беше достигнат след {incidents} периода на прецизно проследяване; при последния мерникът остана върху целта в {precise}/{samples} измервания, докато тя се премести с {movement}° при изисквани {required}°."
 	"evidence.silentaim"	"Отклонение от {deviation}° спрямо видимия мерник добави {points} точки; текущият резултат достигна {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} от {attempts} зачетени изстрела попаднаха ({accuracy}% точност)."
 	"evidence.irregular_behavior"	"{score} точки от {successes} успешни трудни изстрела при {attempts} опита ({accuracy}% успех)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}“ добави {points} точки; доказателствата достигнаха {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"непрекъснато въртене"

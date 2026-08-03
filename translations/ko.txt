@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"급격한 조준 후 명중이 {incidents}회로 기준에 도달했습니다. 최근 기록은 {snap}° 스냅 복귀였습니다."
 	"evidence.aimbot.convergence"	"급격한 조준 후 명중이 {incidents}회로 기준에 도달했습니다. 최근 이동 {snap}°, 목표 오차 {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"부드러운 조준 이동 후 피해를 준 기록이 {incidents}회로 기준에 도달했습니다. 최근 이동 {snap}°, 목표 오차 {before}° -> {after}°."
 	"evidence.aimlock"	"정밀 추적이 {incidents}회로 기준에 도달했습니다. 최근 기록에서 목표가 요구값 {required}°에 대해 {movement}° 이동하는 동안 {precise}/{samples}개 샘플에서 조준이 목표에 유지되었습니다."
 	"evidence.silentaim"	"보이는 조준점과 {deviation}° 차이가 나 {points}점이 추가되었고, 누적 점수가 {score}/{threshold}에 도달했습니다."
 	"evidence.inhuman_accuracy"	"평가 대상 {attempts}발 중 {hits}발이 명중했습니다(명중률 {accuracy}%)."
 	"evidence.irregular_behavior"	"어려운 사격 {attempts}회 중 {successes}회 성공해(성공률 {accuracy}%) {score}점을 기록했습니다."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"“{reason}”로 {points}점이 추가되어 증거가 {score}/{threshold}에 도달했습니다."
 	"evidence.antiaim.reason.spin"	"지속적인 회전"

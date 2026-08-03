@@ -223,6 +223,65 @@ namespace detection
 		std::array<DoubletapState, MAXPLAYERS + 1> playerData;
 	};
 
+	enum class TriggerContactMode : std::uint8_t
+	{
+		AimDriven,
+		TargetDriven,
+	};
+
+	struct TriggerbotPending
+	{
+		int commandNumber {};
+		int targetIndex {-1};
+		int reactionTicks {};
+		TriggerContactMode mode {};
+	};
+
+	struct TriggerbotIncident
+	{
+		Clock::time_point time;
+		int reactionTicks {};
+	};
+
+	struct TriggerbotPlayerData
+	{
+		std::array<int, MAXPLAYERS + 1> lastContactTick;
+		std::deque<TriggerbotPending> pending;
+		std::deque<TriggerbotIncident> history;
+		QAngle lastAngles;
+		int lastCommandNumber {-1};
+		int activeTarget {-1};
+		int contactStartCommand {-1};
+		TriggerContactMode activeMode {};
+		bool lastAnglesValid {};
+	};
+
+	struct TriggerbotSmoke
+	{
+		Vector center;
+		Clock::time_point expires;
+	};
+
+	// Detects repeated damaging shots fired within three ticks of fresh, unobstructed enemy hitbox contact.
+	class TriggerbotModule
+	{
+	public:
+		void Load(AnnounceCallback announce, NetworkSafetyMonitor *networkSafety);
+		void Unload();
+		void Reset();
+		void OnSetupMove(MovementPlayer *player, PlayerCommand *command, int currentTick);
+		void OnPlayerHurt(IGameEvent *event, MovementPlayer *attacker, MovementPlayer *victim, const ShotRecord &shot);
+		void OnGameEvent(IGameEvent *event);
+		void OnClientDisconnect(MovementPlayer *player);
+
+	private:
+		AnnounceCallback announce {};
+		NetworkSafetyMonitor *networkSafety {};
+		std::array<TriggerbotPlayerData, MAXPLAYERS + 1> playerData;
+		std::deque<TriggerbotSmoke> smokes;
+		Clock::time_point smokeStateUnknownUntil;
+	};
+
 	struct SilentIncident
 	{
 		Clock::time_point time;
@@ -287,7 +346,8 @@ namespace detection
 		AnnounceCallback announce {};
 		ShotCorrelator *shots {};
 		std::array<AimbotPlayerData, MAXPLAYERS + 1> playerData;
-		std::array<std::deque<Clock::time_point>, MAXPLAYERS + 1> evidence;
+		std::array<std::deque<Clock::time_point>, MAXPLAYERS + 1> snapEvidence;
+		std::array<std::deque<Clock::time_point>, MAXPLAYERS + 1> smoothEvidence;
 	};
 
 	struct AimlockSample
@@ -558,6 +618,7 @@ namespace detection
 		NetworkSafetyMonitor networkSafety;
 		ShotCorrelator shots;
 		DoubletapModule doubletap;
+		TriggerbotModule triggerbot;
 		SilentAimModule silentAim;
 		AimbotModule aimbot;
 		AimlockModule aimlock;

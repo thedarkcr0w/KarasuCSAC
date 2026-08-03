@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Tröskeln nåddes efter {incidents} snabba siktförflyttningar med träff; den senaste var en återgång på {snap}°."
 	"evidence.aimbot.convergence"	"Tröskeln nåddes efter {incidents} snabba siktförflyttningar med träff; senaste rörelse {snap}°, målfel {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Tröskeln nåddes efter {incidents} jämna siktförflyttningar som gav skada; senaste rörelse {snap}°, målfel {before}° -> {after}°."
 	"evidence.aimlock"	"Tröskeln nåddes efter {incidents} exakta följningsperioder; senast låg siktet på målet i {precise}/{samples} mätningar medan det rörde sig {movement}° mot kravet {required}°."
 	"evidence.silentaim"	"En avvikelse på {deviation}° från det synliga siktet gav {points} poäng; den rullande poängen nådde {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} av {attempts} kvalificerade skott träffade ({accuracy}% träffsäkerhet)."
 	"evidence.irregular_behavior"	"{score} poäng från {successes} lyckade svåra skott av {attempts} försök ({accuracy}% framgång)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"”{reason}” gav {points} poäng; bevisningen nådde {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"kontinuerlig rotation"

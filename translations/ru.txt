@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Порог достигнут после {incidents} резких доводок с попаданием; последняя была возвратом на {snap}°."
 	"evidence.aimbot.convergence"	"Порог достигнут после {incidents} резких доводок с попаданием; последняя доводка — {snap}°, ошибка до цели снизилась с {before}° до {after}°."
+	"evidence.aimbot.smooth"	"Порог достигнут после {incidents} плавных движений прицела с нанесением урона; последнее движение — {snap}°, ошибка до цели снизилась с {before}° до {after}°."
 	"evidence.aimlock"	"Порог достигнут после {incidents} эпизодов точного сопровождения; в последнем при движении цели на {movement}° из требуемых {required}° прицел удерживался на ней в {precise} из {samples} замеров."
 	"evidence.silentaim"	"Отклонение на {deviation}° от видимого прицела добавило {points} очков; накопленный счёт достиг {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"Попаданий: {hits} из {attempts} учитываемых выстрелов (точность {accuracy}%)."
 	"evidence.irregular_behavior"	"Набрано {score} очков: {successes} сложных попаданий из {attempts} попыток (успех {accuracy}%)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"Причина «{reason}» добавила {points} очков; доказательства достигли {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"непрерывное вращение"

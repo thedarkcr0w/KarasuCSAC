@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Pragul a fost atins după {incidents} mișcări bruște urmate de lovitură; ultima a fost o revenire de {snap}°."
 	"evidence.aimbot.convergence"	"Pragul a fost atins după {incidents} mișcări bruște urmate de lovitură; ultima mișcare {snap}°, eroarea față de țintă {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Pragul a fost atins după {incidents} mișcări line de ochire care au provocat daune; ultima mișcare {snap}°, eroarea față de țintă {before}° -> {after}°."
 	"evidence.aimlock"	"Pragul a fost atins după {incidents} perioade de urmărire precisă; în ultima, ținta a fost urmărită în {precise}/{samples} măsurători în timp ce s-a mișcat {movement}° față de cele {required}° necesare."
 	"evidence.silentaim"	"O abatere de {deviation}° față de ținta vizibilă a adăugat {points} puncte; scorul acumulat a ajuns la {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} din {attempts} focuri eligibile au lovit (precizie {accuracy}%)."
 	"evidence.irregular_behavior"	"{score} puncte din {successes} focuri dificile reușite în {attempts} încercări ({accuracy}% reușită)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}” a adăugat {points} puncte; dovezile au ajuns la {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"rotire continuă"

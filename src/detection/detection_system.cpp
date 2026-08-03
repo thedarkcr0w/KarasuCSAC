@@ -577,6 +577,7 @@ namespace detection
 		networkSafety.Reset();
 		shots.Reset();
 		doubletap.Load(announce, announceNetworkVeto, &networkSafety);
+		triggerbot.Load(announce, &networkSafety);
 		silentAim.Load(announce, &shots);
 		aimbot.Load(announce, &shots);
 		aimlock.Load(announce, &shots);
@@ -594,6 +595,7 @@ namespace detection
 	void DetectionSystem::Unload()
 	{
 		doubletap.Unload();
+		triggerbot.Unload();
 		silentAim.Unload();
 		aimbot.Unload();
 		aimlock.Unload();
@@ -613,6 +615,7 @@ namespace detection
 	void DetectionSystem::Reset()
 	{
 		doubletap.Reset();
+		triggerbot.Reset();
 		silentAim.Reset();
 		aimbot.Reset();
 		aimlock.Reset();
@@ -648,7 +651,8 @@ namespace detection
 			return;
 		}
 		shots.OnProcessUsercmds(player, commands, numCommands);
-		if (settings::IsDetectionEnabled(DetectionType::Doubletap) || settings::IsDetectionEnabled(DetectionType::AntiAim))
+		if (settings::IsDetectionEnabled(DetectionType::Doubletap) || settings::IsDetectionEnabled(DetectionType::AntiAim)
+			|| settings::IsDetectionEnabled(DetectionType::Triggerbot))
 		{
 			networkSafety.OnProcessUsercmds(player, commands, numCommands);
 		}
@@ -670,6 +674,10 @@ namespace detection
 			return;
 		}
 		shots.OnSetupMove(player, command, currentTick);
+		if (settings::IsDetectionEnabled(DetectionType::Triggerbot))
+		{
+			triggerbot.OnSetupMove(player, command, currentTick);
+		}
 		if (settings::IsDetectionEnabled(DetectionType::Aimbot))
 		{
 			aimbot.OnSetupMove(player, command, currentTick);
@@ -692,7 +700,8 @@ namespace detection
 			return;
 		}
 		shots.CaptureFrame(currentTick);
-		if (settings::IsDetectionEnabled(DetectionType::Doubletap) || settings::IsDetectionEnabled(DetectionType::AntiAim))
+		if (settings::IsDetectionEnabled(DetectionType::Doubletap) || settings::IsDetectionEnabled(DetectionType::AntiAim)
+			|| settings::IsDetectionEnabled(DetectionType::Triggerbot))
 		{
 			networkSafety.OnGameFrame();
 		}
@@ -734,6 +743,10 @@ namespace detection
 		{
 			return;
 		}
+		if (settings::IsDetectionEnabled(DetectionType::Triggerbot))
+		{
+			triggerbot.OnGameEvent(event);
+		}
 
 		if (settings::IsDetectionEnabled(DetectionType::AntiAim))
 		{
@@ -763,6 +776,10 @@ namespace detection
 			{
 				auto *attacker = g_pCS2ACPlayerManager->ToPlayer(static_cast<u32>(shot->playerIndex));
 				auto *victim = g_pCS2ACPlayerManager->ToPlayer(static_cast<u32>(shot->victimIndex));
+				if (settings::IsDetectionEnabled(DetectionType::Triggerbot))
+				{
+					triggerbot.OnPlayerHurt(event, attacker, victim, *shot);
+				}
 				if (settings::IsDetectionEnabled(DetectionType::Aimbot))
 				{
 					aimbot.OnPlayerHurt(attacker, victim, *shot);
@@ -818,6 +835,7 @@ namespace detection
 	void DetectionSystem::OnClientDisconnect(MovementPlayer *player)
 	{
 		doubletap.OnClientDisconnect(player);
+		triggerbot.OnClientDisconnect(player);
 		silentAim.OnClientDisconnect(player);
 		aimbot.OnClientDisconnect(player);
 		aimlock.OnClientDisconnect(player);

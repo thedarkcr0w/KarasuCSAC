@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"{incidents} 次急转命中达到阈值；最近一次为 {snap}° 的急转回正。"
 	"evidence.aimbot.convergence"	"{incidents} 次急转命中达到阈值；最近一次急转 {snap}°，目标误差从 {before}° 降至 {after}°。"
+	"evidence.aimbot.smooth"	"{incidents} 次平滑瞄准并造成伤害达到阈值；最近一次移动 {snap}°，目标误差从 {before}° 降至 {after}°。"
 	"evidence.aimlock"	"{incidents} 次精确跟踪达到阈值；最近一次中，目标移动了 {movement}°（要求 {required}°），准星在 {precise}/{samples} 个样本中保持在目标上。"
 	"evidence.silentaim"	"弹着点与可见准星偏差 {deviation}°，增加 {points} 分；滚动分数达到 {score}/{threshold}。"
 	"evidence.inhuman_accuracy"	"{attempts} 次有效射击中有 {hits} 次命中（命中率 {accuracy}%）。"
 	"evidence.irregular_behavior"	"{attempts} 次高难度射击中成功 {successes} 次（成功率 {accuracy}%），累计 {score} 分。"
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"“{reason}”增加 {points} 分；证据达到 {score}/{threshold}。"
 	"evidence.antiaim.reason.spin"	"持续旋转"

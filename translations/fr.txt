@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Le seuil a été atteint après {incidents} visées brusques suivies d'un tir réussi ; la dernière était un retour de {snap}°."
 	"evidence.aimbot.convergence"	"Le seuil a été atteint après {incidents} visées brusques suivies d'un tir réussi ; dernier mouvement : {snap}°, erreur de cible : {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Le seuil a été atteint après {incidents} mouvements de visée fluides ayant infligé des dégâts ; dernier mouvement : {snap}°, erreur de cible : {before}° -> {after}°."
 	"evidence.aimlock"	"Le seuil a été atteint après {incidents} phases de suivi précis ; lors de la dernière, la visée est restée sur la cible pendant {precise}/{samples} mesures tandis qu'elle se déplaçait de {movement}° pour {required}° requis."
 	"evidence.silentaim"	"Un écart de {deviation}° par rapport à la visée visible a ajouté {points} points ; le score glissant a atteint {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} tirs sur {attempts} tirs retenus ont touché ({accuracy}% de précision)."
 	"evidence.irregular_behavior"	"{score} points obtenus avec {successes} tirs difficiles réussis sur {attempts} tentatives ({accuracy}% de réussite)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"« {reason} » a ajouté {points} points ; les preuves ont atteint {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"rotation continue"

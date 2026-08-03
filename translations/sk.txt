@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Prah bol dosiahnutý po {incidents} prudkých zamiereniach so zásahom; posledné bolo návratom o {snap}°."
 	"evidence.aimbot.convergence"	"Prah bol dosiahnutý po {incidents} prudkých zamiereniach so zásahom; posledný pohyb {snap}°, chyba voči cieľu {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Prah bol dosiahnutý po {incidents} plynulých pohyboch mierenia, ktoré spôsobili poškodenie; posledný pohyb {snap}°, chyba voči cieľu {before}° -> {after}°."
 	"evidence.aimlock"	"Prah bol dosiahnutý po {incidents} úsekoch presného sledovania; naposledy zostal zameriavač na cieli v {precise}/{samples} vzorkách, kým sa cieľ pohol o {movement}° oproti požadovaným {required}°."
 	"evidence.silentaim"	"Odchýlka {deviation}° od viditeľného zamierenia pridala {points} bodov; priebežné skóre dosiahlo {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"Zásahov bolo {hits} z {attempts} započítaných výstrelov (presnosť {accuracy}%)."
 	"evidence.irregular_behavior"	"{score} bodov za {successes} úspešných náročných výstrelov z {attempts} pokusov (úspešnosť {accuracy}%)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}“ pridalo {points} bodov; dôkazy dosiahli {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"nepretržité otáčanie"

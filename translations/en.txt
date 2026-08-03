@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"{incidents} snap-hit incidents reached the threshold; the latest was a {snap}-degree snap-return."
 	"evidence.aimbot.convergence"	"{incidents} snap-hit incidents reached the threshold; latest snap {snap} degrees, target error {before} -> {after} degrees."
+	"evidence.aimbot.smooth"	"{incidents} smooth damaging aim movements reached the threshold; latest movement {snap} degrees, target error {before} -> {after} degrees."
 	"evidence.aimlock"	"{incidents} precise tracking episodes reached the threshold; the latest stayed on target for {precise}/{samples} samples while the target moved {movement} degrees against a {required}-degree requirement."
 	"evidence.silentaim"	"{deviation} degrees from visible aim added {points} points; the rolling score reached {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} of {attempts} qualifying shots hit ({accuracy}% accuracy)."
 	"evidence.irregular_behavior"	"{score} points from {successes} successful difficult shots out of {attempts} attempts ({accuracy}% success)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"{reason} added {points} points and reached {score}/{threshold} evidence."
 	"evidence.antiaim.reason.spin"	"continuous spin"

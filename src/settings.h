@@ -22,6 +22,7 @@ enum class DetectionType : std::uint8_t
 	Nulls,
 	SilentAim,
 	SubtickSpam,
+	Triggerbot,
 	Count,
 };
 
@@ -40,6 +41,7 @@ namespace settings
 	std::uint64_t GetRevision();
 	bool ShowChatAnnouncements();
 	bool ShowCenterAnnouncements();
+	bool AutomaticUpdatesEnabled();
 	const char *GetPunishmentCommand();
 	const char *GetKickCommand();
 	const char *GetWebhookUrl();

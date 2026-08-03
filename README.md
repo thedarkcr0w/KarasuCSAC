@@ -20,6 +20,10 @@
 >   Karasu the authoritative ban is the platform account ban, not a server-local one.
 > - Implements the previously-ignored `validated` argument of `Player::GetSteamId64`,
 >   so an unauthenticated SteamID can never be the basis of a ban.
+> - Compiles out upstream's self-updater. It would replace this fork with a stock
+>   upstream build — silently, since stock CS2AC still loads and still logs detections,
+>   so autobans would stop while the plugin looked healthy. Karasu ships plugin updates
+>   in the DatHost bundle instead.
 >
 > Read [docs/KARASU.md](docs/KARASU.md) before deploying it. Upstream's own
 > documentation follows below and still describes how the detectors work.
@@ -34,16 +38,16 @@
 
 ### Open-source server-side anti-cheat for Counter-Strike 2.
 
-[![Build](https://img.shields.io/github/actions/workflow/status/karola3vax/CS2AC/build.yml?branch=main&style=for-the-badge&label=build)](https://github.com/karola3vax/CS2AC/actions/workflows/build.yml)
-[![Detections](https://img.shields.io/badge/detections-17-red?style=for-the-badge)](#detection-modules)
+[![Modules](https://img.shields.io/badge/modules-18-6f42c1?style=for-the-badge)](#detection-modules)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-5c7cfa?style=for-the-badge)](#quickstart)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-2ea44f?style=for-the-badge)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/karola3vax)
 
 **A good Counter-Strike match should be decided by the players, not by who brought the better cheat.**
 
 CS2AC watches the aim, shots, movement, button presses, and game settings that players send to the server. When it finds enough strong evidence, it reports the player and can ask the server to punish them.
 
-[Watch it work](#showcase) · [Read the detection modules](#detection-modules) · [Pair it with CS2FOW](#cs2ac-and-cs2fow)
+[Watch it work](#showcase) · [Install](#quickstart) · [Read the detection modules](#detection-modules) · [Pair it with CS2FOW](#cs2ac-and-cs2fow)
 
 </div>
 
@@ -102,6 +106,22 @@ CS2AC watches the aim, shots, movement, button presses, and game settings that p
 
 </div>
 
+## Quickstart
+
+You need a Windows x64 or Linux x64 CS2 dedicated server running [Metamod:Source](https://www.sourcemm.net/) 2.x.
+
+1. Open this repository's **Releases** tab and choose the matching Windows or Linux package.
+2. Extract it into the CS2 server root without rearranging anything. The package begins with the `game` folder.
+3. Edit `game/csgo/cfg/cs2ac.cfg`.
+4. Start the server.
+5. Run `meta list`, then `cs2ac_status`.
+
+That is it. Players install nothing.
+
+The default punishment commands are made for [CS2-SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin). If your server uses another admin plugin, replace the two commands in `cs2ac.cfg` with commands that plugin understands.
+
+Upstream CS2AC checks for stable updates after startup and every six hours, and installs them on the next full server restart. **This fork compiles that updater out entirely** — a stock upstream build would overwrite the Karasu relay, the confidence table and the branding, so `cs2ac_auto_update` has no effect here and `cs2ac_status` reports automatic updates as off regardless of its value. Karasu ships plugin updates in the DatHost bundle.
+
 ## Detection output
 
 When a detector finds enough evidence, CS2AC can report the result wherever the server owner needs it:
@@ -147,7 +167,7 @@ Whitelisted players can still be detected and reported, but CS2AC stops before s
 
 ## Detection modules
 
-All 17 modules are enabled by default, and each one can be turned off. Open **How strict is it?** to see its main rule. These numbers come from the current code and cannot be changed in the config.
+All 18 modules are enabled by default, and each one can be turned off. Open **How strict is it?** to see its main rule. These numbers come from the current code and cannot be changed in the config.
 
 ### Aim and accuracy
 
@@ -156,7 +176,7 @@ All 17 modules are enabled by default, and each one can be turned off. Open **Ho
 <details>
 <summary><strong>How strict is it?</strong></summary>
 
-Three suspicious snap shots within five minutes. The enemy must be at least 100 game units away, and CS2AC checks the half-second before the shot.
+Three suspicious one-command snap movements before damaging shots, or three matching smooth aim curves, within five minutes. The enemy must be at least 100 game units away, and CS2AC checks the half-second before the shot.
 
 </details>
 
@@ -166,6 +186,15 @@ Three suspicious snap shots within five minutes. The enemy must be at least 100 
 <summary><strong>How strict is it?</strong></summary>
 
 This must happen three times within five minutes. Each time, the lock must last two seconds, stay on the enemy for at least 95% of that time, follow at least 128 game units of movement, and start at least 200 game units away.
+
+</details>
+
+**Triggerbot.** A triggerbot fires when the crosshair first touches an enemy. CS2AC casts the same kind of first-hit ray through the current server hitboxes and remembers the player's last 30 damaging fresh-contact shots, whether the aim moved onto the enemy or the enemy entered a held angle.
+
+<details>
+<summary><strong>How strict is it?</strong></summary>
+
+The previous contact with that enemy must be at least one second old, and the confirmed shot must damage that same enemy. Contact-to-damage shots in 0-1 ticks add 2 points and 2-tick shots add 1 point; reactions of 3 ticks or longer remove 2 points. Detection needs 10 points and the score cannot fall below zero. Walls, misses, held sprays, unconfirmed shots, unsafe networking, possible smoke, the R8 Revolver, and the Zeus cannot change the score.
 
 </details>
 
@@ -310,22 +339,6 @@ The detector needs 20 suspicious commands within half a second.
 
 </details>
 
-## Quickstart
-
-You need a Windows x64 or Linux x64 CS2 dedicated server running [Metamod:Source](https://www.sourcemm.net/) 2.x.
-
-1. Open this repository's **Releases** tab and choose the matching Windows or Linux package.
-2. Extract it into the CS2 server root without rearranging anything. The package begins with the `game` folder.
-3. Edit `game/csgo/cfg/cs2ac.cfg`.
-4. Start the server.
-5. Run `meta list`, then `cs2ac_status`.
-
-That is it. Players install nothing.
-
-The default punishment commands are made for [CS2-SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin). If your server uses another admin plugin, replace the two commands in `cs2ac.cfg` with commands that plugin understands.
-
-CS2AC checks for stable updates after startup and every six hours. A verified update is prepared in the background and installed on the next full server restart. Existing settings are copied into the new configuration layout, and the previous configuration and plugin binary are kept as backups.
-
 ## Configuration
 
 <details>
@@ -336,6 +349,7 @@ The included [`cs2ac.cfg`](cfg/cs2ac.cfg) explains every option in plain languag
 | Setting | Default | What it does |
 | --- | ---: | --- |
 | `cs2ac_enabled` | `1` | Master switch for CS2AC. |
+| `cs2ac_auto_update` | `0` | Upstream's automatic updater. **No effect on this fork** — the updater is compiled out. |
 | `cs2ac_whitelist` | empty | SteamID64s that may be detected but must never be punished. |
 | `cs2ac_*_enabled` | `1` | Enable or disable one detection module. |
 | `cs2ac_chat_announcements` | `1` | Show detections in public chat. |
@@ -483,7 +497,7 @@ Both scripts make a directly installable package under the build folder's `packa
 
 ## Contributing
 
-Run CS2AC on a real server. Test it, send reproducible reports, and include the detector evidence whenever something looks wrong.
+Run CS2AC on a real server. Test it, [send reproducible reports](https://github.com/karola3vax/CS2AC/issues), and include the detector evidence whenever something looks wrong.
 
 If CS2AC earns a place on your server, star the repository and share your clips. That helps more server owners find it and gives the project better real-world feedback.
 

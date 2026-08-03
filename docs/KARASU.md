@@ -12,14 +12,14 @@ is the wrong shape for Karasu: the authoritative ban is an account ban on the
 platform, it has to outlive the container the match ran in, and it has to be
 appealable. So this fork does three things instead:
 
-1. Gives each of the 17 detectors a confidence reflecting how strong its firing bar is.
+1. Gives each of the 18 detectors a confidence reflecting how strong its firing bar is.
 2. Bans on one detection above a configurable confidence, and requires a repeat or a
    corroborating detector below it — so every detector is bannable, but the weaker ones
    have to earn it.
 3. Relays the detection to the platform, which makes the real decision.
 
 ```
-17 detectors ──▶ CS2ACPlugin::HandleDetection            (src/cs2ac.cpp)
+18 detectors ──▶ CS2ACPlugin::HandleDetection            (src/cs2ac.cpp)
                         │
                         ├─▶ chat / centre alert / Discord webhook   [upstream, unchanged]
                         │
@@ -73,7 +73,8 @@ The confidences:
 95 invalid input      93 desubticking, subtick spam   88 aimlock    86 silentaim
 84 antiaim            82 aimbot                       80 nulls, invalid cvar
 78 bhop, hyperscroll  76 autostrafe                   55 dll injection
-50 doubletap          45 inhuman accuracy, irregular behavior       30 namechanger
+50 doubletap          48 triggerbot                   45 inhuman accuracy,
+45 irregular behavior 30 namechanger
 ```
 
 At the default of 55, everything down to and including DLL INJECTION bans on a single
@@ -81,7 +82,7 @@ detection. Set the dial to 30 and every detector does; 76 and only aim/movement/
 do; 90 and only the three that are structurally impossible for a real client do.
 
 > **The one to watch is DLL INJECTION.** It is the weakest detector that bans on its own
-> at the default, and it fires on any *one* of 118 client event subscriptions with no
+> at the default, and it fires on any *one* of 117 client event subscriptions with no
 > accumulation and no latch — a list that includes `player_jump`, `door_open` and
 > `gc_connected`. A legitimate overlay, or a Valve client change, can trip it. Raising
 > `cs2ac_karasu_solo_ban_confidence` above 55 is the single change that stops it banning
@@ -132,8 +133,9 @@ or a corroborating detector first.
 
 | Detector | Why its confidence is low |
 |---|---|
-| `DLL INJECTION` | Fires on any one of 118 client event subscriptions, with no accumulation and no latch. The list includes `player_jump`, `door_open` and `gc_connected` — any legitimate overlay, or a Valve client change, would otherwise ban everyone who has it. Highest false-positive risk in the codebase. |
+| `DLL INJECTION` | Fires on any one of 117 client event subscriptions, with no accumulation and no latch. The list includes `player_jump`, `door_open` and `gc_connected` — any legitimate overlay, or a Valve client change, would otherwise ban everyone who has it. Highest false-positive risk in the codebase. |
 | `DOUBLETAP` | Its incident counter has no time window, so three fire-pairs spread across a whole map still trip it. |
+| `TRIGGERBOT` | Each sample is a damaging shot fired 0-2 ticks after the crosshair first touched an enemy, which is far below human reaction time — but the contact trace is not lag compensated, so steady latency skews the count, and pre-firing a held angle on a sound cue lands in the same bucket. Well plumbed (damage confirmed, smoke excluded, network vetoed, ordinary duels subtract) but softly measured. Needs three fires to reach the ban bar. |
 | `INHUMAN ACCURACY` | A strong human on close-range SMG duels reaches the threshold, and the weapon list includes p90 and mac10. |
 | `IRREGULAR BEHAVIOR` | Airborne and no-scope kills are legitimate, if rare, human plays. |
 | `NAMECHANGER` | Detects annoyance, not cheating. Belongs in conduct moderation. |
@@ -174,7 +176,7 @@ All keys live in `cfg/cs2ac.cfg`. None of them is a secret.
 | `cs2ac_karasu_relay` | `1` | Send detections to the Karasu plugin. |
 | `cs2ac_karasu_relay_command` | `karasu_anticheat_report` | Command the Karasu plugin listens on. |
 | `cs2ac_karasu_enforce` | `2` | `0` report only · `1` kick on this server · `2` kick and ask for an account ban. |
-| `cs2ac_karasu_kick_command` | `kickid {userid} Karasu Anti-Cheat` | How a detected player is removed. |
+| `cs2ac_karasu_kick_command` | `kickid {userid} [KarasuAC] {detection}` | How a detected player is removed. |
 | `cs2ac_karasu_solo_ban_confidence` | `55` | **The main dial.** Confidence at which one detection bans on its own. |
 | `cs2ac_karasu_min_confidence` | `72` | Floor a detection must clear to corroborate. |
 | `cs2ac_karasu_corroboration_window` | `1800` | Seconds a detection stays eligible to corroborate. |
@@ -258,7 +260,7 @@ would have been silently dead in production. The drop path now prints the actual
 Verified on a real CS2 dedicated server (Metamod:Source 2, `de_dust2`):
 
 - Builds clean under clang++, `-Wall -Werror`, C++17, via `./build-linux.sh`.
-- Loads: `meta list` shows `KarasuCSAC (1.0.2)`.
+- Loads: `meta list` shows `KarasuCSAC (1.0.12)`.
 - `cs2ac.cfg` parses, including every `cs2ac_karasu_*` key; `cs2ac_check_config` passes.
 - The policy is correct end to end, observed via `cs2ac_karasu_test_report`:
   `INVALID INPUT` (95), `AIMLOCK` (88), `SILENTAIM` (86) and `DLL INJECTION` (55) all

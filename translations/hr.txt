@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"Prag je dostignut nakon {incidents} naglih nišanjenja s pogotkom; posljednje je bilo vraćanje od {snap}°."
 	"evidence.aimbot.convergence"	"Prag je dostignut nakon {incidents} naglih nišanjenja s pogotkom; posljednji pokret {snap}°, pogreška prema meti {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"Prag je dostignut nakon {incidents} glatkih pokreta nišana koji su nanijeli štetu; posljednji pokret {snap}°, pogreška prema meti {before}° -> {after}°."
 	"evidence.aimlock"	"Prag je dostignut nakon {incidents} razdoblja preciznog praćenja; posljednji put nišan je ostao na meti u {precise}/{samples} uzoraka dok se meta pomaknula {movement}° prema potrebnih {required}°."
 	"evidence.silentaim"	"Odstupanje od {deviation}° od vidljivog nišana dodalo je {points} bodova; tekući rezultat dosegnuo je {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"Pogođeno je {hits} od {attempts} važećih hitaca ({accuracy}% preciznosti)."
 	"evidence.irregular_behavior"	"{score} bodova iz {successes} uspješnih teških hitaca u {attempts} pokušaja ({accuracy}% uspjeha)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}“ je dodalo {points} bodova; dokazi su dosegnuli {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"neprekidno okretanje"

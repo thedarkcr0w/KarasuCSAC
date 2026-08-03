@@ -6,7 +6,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
+#include <numeric>
+#include <vector>
 
 CConVar<bool> cs2ac_aimbot_debug("cs2ac_aimbot_debug", FCVAR_NONE, "Show why Aimbot accepts or rejects each damaging shot", false);
 
@@ -22,14 +25,35 @@ namespace
 	constexpr size_t commandHistorySize = 128;
 	constexpr int snapWindowTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr float minimumDistance = 100.0f;
-	constexpr int detectionThreshold = 3;
+	constexpr int snapDetectionThreshold = 3;
+	constexpr int smoothDetectionThreshold = 3;
 	constexpr auto evidenceWindow = std::chrono::minutes(5);
+	// A confirmed smoothed-aimbot demo produced 12 damaging curves inside this envelope: 13.66-29.69 degrees of travel,
+	// 94.9-99.5% error removal, 0.12-0.85 degrees of final error, 94.6-100% path efficiency, and 3-5 shrinking steps.
+	constexpr float smoothMinimumMovement = 13.0f;
+	constexpr float smoothMinimumImprovement = 0.94f;
+	constexpr float smoothMaximumFinalError = 1.0f;
+	constexpr float smoothMinimumPathEfficiency = 0.94f;
+	constexpr float smoothMinimumStep = 0.15f;
+	constexpr float smoothRelativeStep = 0.10f;
+	constexpr int smoothMinimumSteps = 3;
+	constexpr float bodyHeights[] = {8.0f, 46.0f, 64.0f};
+
+	constexpr bool MeetsSmoothThresholds(float movement, float improvement, float finalError, float efficiency, int steps, bool shrinking)
+	{
+		return movement >= smoothMinimumMovement && improvement >= smoothMinimumImprovement && finalError <= smoothMaximumFinalError
+			   && efficiency >= smoothMinimumPathEfficiency && steps >= smoothMinimumSteps && shrinking;
+	}
+
+	static_assert(MeetsSmoothThresholds(13.66f, 0.949f, 0.85f, 0.946f, 3, true));
+	static_assert(!MeetsSmoothThresholds(6.31f, 0.934f, 0.41f, 1.0f, 3, true));
 
 	enum class AimbotRule
 	{
 		None,
 		Convergence,
 		SnapReturn,
+		SmoothConvergence,
 	};
 
 	float AimError(const Vector &eye, const QAngle &angles, const Vector &target)
@@ -46,7 +70,6 @@ namespace
 
 	float NearestBodyAimError(const Vector &eye, const QAngle &angles, const Vector &feet)
 	{
-		static constexpr float bodyHeights[] = {8.0f, 46.0f, 64.0f};
 		float best = 180.0f;
 		for (float height : bodyHeights)
 		{
@@ -74,7 +97,8 @@ namespace detection
 	void AimbotModule::Reset()
 	{
 		playerData = {};
-		evidence = {};
+		snapEvidence = {};
+		smoothEvidence = {};
 	}
 
 	void AimbotModule::OnProcessUsercmds(MovementPlayer *player, PlayerCommand *commands, int numCommands)
@@ -256,6 +280,30 @@ namespace detection
 		const char *measurementFailure = "no continuous adjacent command history was available";
 		bool reusedSnap = false;
 		AimbotRule matchedRule = AimbotRule::None;
+
+		struct SmoothPoint
+		{
+			AimCommand *command;
+			float error;
+		};
+
+		int smoothBodyPoint = 0;
+		float smoothShotError = 180.0f;
+		for (int bodyPoint = 0; bodyPoint < static_cast<int>(std::size(bodyHeights)); ++bodyPoint)
+		{
+			const float error = AimError(shotAttacker->eyePosition, shot->angles, shotTarget->origin + Vector(0.0f, 0.0f, bodyHeights[bodyPoint]));
+			if (error < smoothShotError)
+			{
+				smoothShotError = error;
+				smoothBodyPoint = bodyPoint;
+			}
+		}
+		std::vector<SmoothPoint> smoothPoints {{&*shot, smoothShotError}};
+		float smoothMovement = 0.0f;
+		float smoothBefore = 0.0f;
+		float smoothAfter = 0.0f;
+		float smoothEfficiency = 0.0f;
+		int smoothSteps = 0;
 		auto findCommand = [&](int commandNumber) -> AimCommand *
 		{
 			auto found = std::find_if(data.commands.begin(), data.commands.end(),
@@ -301,6 +349,14 @@ namespace detection
 				measurementFailure = "an angle or target-error measurement was invalid";
 				break;
 			}
+			const float smoothError =
+				AimError(olderAttacker->eyePosition, older->angles, olderTarget->origin + Vector(0.0f, 0.0f, bodyHeights[smoothBodyPoint]));
+			if (!std::isfinite(smoothError))
+			{
+				measurementFailure = "a fixed-body target-error measurement was invalid";
+				break;
+			}
+			smoothPoints.push_back({older, smoothError});
 			++measuredMovements;
 			if (snap > largestMeasuredSnap)
 			{
@@ -330,15 +386,9 @@ namespace detection
 
 		AimCommand *previous = data.pendingShot > (std::numeric_limits<int>::min)() ? findCommand(data.pendingShot - 1) : nullptr;
 		AimCommand *next = data.pendingShot < (std::numeric_limits<int>::max)() ? findCommand(data.pendingShot + 1) : nullptr;
-		if (!suspicious && !next)
+		if (!suspicious && !next && static_cast<std::int64_t>(currentTick) - shot->serverTick <= 1)
 		{
-			if (static_cast<std::int64_t>(currentTick) - shot->serverTick <= 1)
-			{
-				return false;
-			}
-			AIMBOT_DEBUG("%s rejected because the next adjacent simulated command never arrived.\n", attacker->GetName());
-			clearPending();
-			return true;
+			return false;
 		}
 		if (previous && next && shot->commandNumber - previous->commandNumber == 1 && next->commandNumber - shot->commandNumber == 1
 			&& static_cast<std::int64_t>(shot->clientTick) - previous->clientTick == 1
@@ -359,6 +409,58 @@ namespace detection
 					largestSnap = snap;
 				}
 				suspicious = true;
+			}
+		}
+
+		if (!suspicious && smoothPoints.size() >= static_cast<size_t>(smoothMinimumSteps + 1))
+		{
+			std::reverse(smoothPoints.begin(), smoothPoints.end());
+			std::vector<float> movements;
+			movements.reserve(smoothPoints.size() - 1);
+			for (size_t index = 1; index < smoothPoints.size(); ++index)
+			{
+				movements.push_back(AngularDistance(smoothPoints[index - 1].command->angles, smoothPoints[index].command->angles));
+			}
+			const auto largest = std::max_element(movements.begin(), movements.end());
+			const size_t start = static_cast<size_t>(std::distance(movements.begin(), largest));
+			const float path = std::accumulate(movements.begin() + static_cast<std::ptrdiff_t>(start), movements.end(), 0.0f);
+			smoothMovement = AngularDistance(smoothPoints[start].command->angles, smoothPoints.back().command->angles);
+			smoothBefore = smoothPoints[start].error;
+			smoothAfter = smoothPoints.back().error;
+			smoothEfficiency = path > EPSILON ? smoothMovement / path : 0.0f;
+			const float meaningfulMinimum = (std::max)(smoothMinimumStep, *largest * smoothRelativeStep);
+			float previousMeaningful = std::numeric_limits<float>::infinity();
+			bool shrinking = true;
+			for (size_t index = start; index < movements.size(); ++index)
+			{
+				if (movements[index] < meaningfulMinimum)
+				{
+					continue;
+				}
+				if (movements[index] >= previousMeaningful)
+				{
+					shrinking = false;
+				}
+				previousMeaningful = movements[index];
+				++smoothSteps;
+			}
+			const float improvement = smoothBefore > EPSILON ? 1.0f - smoothAfter / smoothBefore : 0.0f;
+			const bool fresh = !data.hasCountedIncident || shot->commandNumber > data.lastCountedIncidentCommand;
+			if (fresh && MeetsSmoothThresholds(smoothMovement, improvement, smoothAfter, smoothEfficiency, smoothSteps, shrinking))
+			{
+				suspicious = true;
+				matchedRule = AimbotRule::SmoothConvergence;
+				largestSnap = smoothMovement;
+				bestBefore = smoothBefore;
+				bestAfter = smoothAfter;
+			}
+			else
+			{
+				AIMBOT_DEBUG("%s smooth curve rejected: movement %.2f/%.2f, target error %.2f -> %.2f/%.2f (%.1f%%/%.0f%% closer), "
+							 "path %.1f%%/%.0f%%, steps %d/%d, shrinking %s.\n",
+							 attacker->GetName(), smoothMovement, smoothMinimumMovement, smoothBefore, smoothAfter, smoothMaximumFinalError,
+							 improvement * 100.0f, smoothMinimumImprovement * 100.0f, smoothEfficiency * 100.0f, smoothMinimumPathEfficiency * 100.0f,
+							 smoothSteps, smoothMinimumSteps, shrinking ? "yes" : "no");
 			}
 		}
 
@@ -403,41 +505,64 @@ namespace detection
 		data.lastCountedIncidentCommand = incidentCommand;
 		data.hasCountedIncident = true;
 		const auto now = Clock::now();
-		auto &incidents = evidence[attacker->index];
-		while (!incidents.empty() && now - incidents.front() >= evidenceWindow)
+		auto purge = [&](std::deque<Clock::time_point> &incidents)
 		{
-			incidents.pop_front();
-		}
+			while (!incidents.empty() && now - incidents.front() >= evidenceWindow)
+			{
+				incidents.pop_front();
+			}
+		};
+		auto &snapIncidents = snapEvidence[attacker->index];
+		auto &smoothIncidents = smoothEvidence[attacker->index];
+		purge(snapIncidents);
+		purge(smoothIncidents);
+		auto &incidents = matchedRule == AimbotRule::SmoothConvergence ? smoothIncidents : snapIncidents;
 		incidents.push_back(now);
-		if (matchedRule == AimbotRule::SnapReturn)
+		const int threshold = matchedRule == AimbotRule::SmoothConvergence ? smoothDetectionThreshold : snapDetectionThreshold;
+		if (matchedRule == AimbotRule::SmoothConvergence)
+		{
+			AIMBOT_DEBUG("%s counted smooth convergence %.2f, target error %.2f -> %.2f, path %.1f%%, steps %d, evidence %d/%d.\n",
+						 attacker->GetName(), smoothMovement, smoothBefore, smoothAfter, smoothEfficiency * 100.0f, smoothSteps,
+						 static_cast<int>(incidents.size()), threshold);
+		}
+		else if (matchedRule == AimbotRule::SnapReturn)
 		{
 			AIMBOT_DEBUG("%s counted snap-return %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, static_cast<int>(incidents.size()),
-						 detectionThreshold);
+						 threshold);
 		}
 		else
 		{
 			AIMBOT_DEBUG("%s counted convergence %.2f, target error %.2f -> %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, bestBefore,
-						 bestAfter, static_cast<int>(incidents.size()), detectionThreshold);
+						 bestAfter, static_cast<int>(incidents.size()), threshold);
 		}
-		if (incidents.size() >= detectionThreshold)
+		if (incidents.size() >= static_cast<size_t>(threshold))
 		{
 			if (announce)
 			{
+				const auto values = localization::Arguments {{"incidents", tfm::format("%zu", incidents.size())},
+															 {"snap", tfm::format("%.2f", largestSnap)},
+															 {"before", tfm::format("%.2f", bestBefore)},
+															 {"after", tfm::format("%.2f", bestAfter)}};
 				const localization::Text details =
 					matchedRule == AimbotRule::SnapReturn
 						? localization::Format("evidence.aimbot.snap_return",
 											   "{incidents} snap-hit incidents reached the threshold; the latest was a {snap}-degree snap-return.",
-											   {{"incidents", tfm::format("%zu", incidents.size())}, {"snap", tfm::format("%.2f", largestSnap)}})
-						: localization::Format("evidence.aimbot.convergence",
-											   "{incidents} snap-hit incidents reached the threshold; latest snap {snap} degrees, target error "
-											   "{before} -> {after} degrees.",
-											   {{"incidents", tfm::format("%zu", incidents.size())},
-												{"snap", tfm::format("%.2f", largestSnap)},
-												{"before", tfm::format("%.2f", bestBefore)},
-												{"after", tfm::format("%.2f", bestAfter)}});
+											   values)
+					: matchedRule == AimbotRule::SmoothConvergence
+						? localization::Format(
+							  "evidence.aimbot.smooth",
+							  "{incidents} smooth damaging aim movements reached the threshold; latest movement {snap} degrees, target "
+							  "error {before} -> {after} degrees.",
+							  values)
+						: localization::Format(
+							  "evidence.aimbot.convergence",
+							  "{incidents} snap-hit incidents reached the threshold; latest snap {snap} degrees, target error {before} -> "
+							  "{after} degrees.",
+							  values);
 				announce("AIMBOT", attacker, details);
 			}
-			incidents.clear();
+			snapIncidents.clear();
+			smoothIncidents.clear();
 		}
 		return true;
 	}
@@ -447,7 +572,8 @@ namespace detection
 		if (player && player->index >= 1 && player->index <= MAXPLAYERS)
 		{
 			playerData[player->index] = {};
-			evidence[player->index].clear();
+			snapEvidence[player->index].clear();
+			smoothEvidence[player->index].clear();
 		}
 	}
 } // namespace detection

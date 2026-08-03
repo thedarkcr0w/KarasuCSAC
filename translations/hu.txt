@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"A küszöböt {incidents} hirtelen, találattal végződő célzás érte el; a legutóbbi {snap}°-os visszatérés volt."
 	"evidence.aimbot.convergence"	"A küszöböt {incidents} hirtelen, találattal végződő célzás érte el; legutóbbi mozgás {snap}°, célhiba {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"A küszöböt {incidents} egyenletes, sebzéssel végződő célzás érte el; legutóbbi mozgás {snap}°, célhiba {before}° -> {after}°."
 	"evidence.aimlock"	"A küszöböt {incidents} pontos követési szakasz érte el; a legutóbb a célkereszt {precise}/{samples} mintán át a célon maradt, miközben az {movement}°-ot mozdult a szükséges {required}°-hoz képest."
 	"evidence.silentaim"	"A látható célzástól mért {deviation}° eltérés {points} pontot adott; a gördülő pontszám elérte a {score}/{threshold} értéket."
 	"evidence.inhuman_accuracy"	"{hits} találat {attempts} értékelt lövésből ({accuracy}% pontosság)."
 	"evidence.irregular_behavior"	"{score} pont {successes} sikeres nehéz lövésből, {attempts} kísérlet mellett ({accuracy}% siker)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"„{reason}” {points} pontot adott; a bizonyíték elérte a {score}/{threshold} értéket."
 	"evidence.antiaim.reason.spin"	"folyamatos forgás"

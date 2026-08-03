@@ -13,10 +13,12 @@
 
 	"evidence.aimbot.snap_return"	"La soglia è stata raggiunta dopo {incidents} movimenti bruschi con colpo a segno; l'ultimo è stato un ritorno di {snap}°."
 	"evidence.aimbot.convergence"	"La soglia è stata raggiunta dopo {incidents} movimenti bruschi con colpo a segno; ultimo movimento {snap}°, errore sul bersaglio {before}° -> {after}°."
+	"evidence.aimbot.smooth"	"La soglia è stata raggiunta dopo {incidents} movimenti fluidi della mira che hanno inflitto danni; ultimo movimento {snap}°, errore sul bersaglio {before}° -> {after}°."
 	"evidence.aimlock"	"La soglia è stata raggiunta dopo {incidents} fasi di inseguimento preciso; nell'ultima la mira è rimasta sul bersaglio per {precise}/{samples} campioni mentre si muoveva di {movement}° rispetto ai {required}° richiesti."
 	"evidence.silentaim"	"Uno scarto di {deviation}° dalla mira visibile ha aggiunto {points} punti; il punteggio mobile ha raggiunto {score}/{threshold}."
 	"evidence.inhuman_accuracy"	"{hits} colpi su {attempts} tiri validi sono andati a segno (precisione {accuracy}%)."
 	"evidence.irregular_behavior"	"{score} punti ottenuti con {successes} tiri difficili riusciti su {attempts} tentativi ({accuracy}% di successo)."
+	"evidence.triggerbot"	"The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), {two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: {latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}."
 
 	"evidence.antiaim"	"«{reason}» ha aggiunto {points} punti; le prove hanno raggiunto {score}/{threshold}."
 	"evidence.antiaim.reason.spin"	"rotazione continua"
