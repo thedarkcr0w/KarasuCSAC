@@ -961,7 +961,8 @@ void CS2ACPlugin::ProcessJoinWatermarks()
 		{
 			state.pending = false;
 			state.shown = true;
-			state.centerPending = true;
+			// Chat only on this fork — see karasu::kShowJoinWatermarkOnScreen.
+			state.centerPending = karasu::kShowJoinWatermarkOnScreen;
 			utils::AnnounceWatermarkTo(player->GetPlayerSlot(), false);
 		}
 		if (state.centerPending && player->IsInGame() && !utils::IsDetectionAnnouncementActive())

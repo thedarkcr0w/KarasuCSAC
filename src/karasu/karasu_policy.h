@@ -38,6 +38,16 @@ namespace karasu
 	// the thing that runs.
 	inline constexpr bool kAllowUpstreamAutoUpdate = false;
 
+	// Upstream shows its join watermark twice: once in chat, then again as a
+	// centre-screen HTML overlay a moment later. The Karasu CS2 plugin draws its
+	// own centre-screen banner on join at the same moment, so the two landed on
+	// top of each other and neither was readable.
+	//
+	// Only the on-screen half is suppressed. The chat line still goes to every
+	// player on join, so the attribution upstream asks for is untouched — and
+	// detection announcements are unaffected, they use a different path.
+	inline constexpr bool kShowJoinWatermarkOnScreen = false;
+
 	enum class Tier : std::uint8_t
 	{
 		A,
