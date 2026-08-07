@@ -88,7 +88,7 @@ That is it. Players install nothing.
 
 The default punishment commands are made for [CS2-SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin). If your server uses another admin plugin, replace the two commands in `cs2ac.cfg` with commands that plugin understands.
 
-CS2AC checks for stable updates after startup and every six hours. A verified update is prepared in the background and installed on the next full server restart. Set `cs2ac_auto_update 0` in `cs2ac.cfg` and run `cs2ac_reload` to disable future automatic checks and downloads. An update already prepared before this was disabled may still install on the next restart. Existing settings are copied into the new configuration layout, and the previous configuration and plugin binary are kept as backups.
+CS2AC checks for stable updates after startup and every six hours. GitHub is tried first, with the GitLab mirror used automatically if GitHub is unavailable. A verified update is prepared in the background and installed on the next full server restart. Set `cs2ac_auto_update 0` in `cs2ac.cfg` and run `cs2ac_reload` to disable future automatic checks and downloads. An update already prepared before this was disabled may still install on the next restart. Existing settings are copied into the new configuration layout, and the previous configuration and plugin binary are kept as backups.
 
 ## Detection output
 

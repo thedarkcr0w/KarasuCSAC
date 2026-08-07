@@ -31,7 +31,9 @@ namespace
 	constexpr std::uint32_t maximumPackageSize = 32 * 1024 * 1024;
 	constexpr std::uint64_t maximumExtractedSize = 64 * 1024 * 1024;
 	constexpr std::uint32_t maximumArchiveFiles = 512;
-	constexpr const char *releaseApi = "https://api.github.com/repos/karola3vax/CS2AC/releases/latest";
+	constexpr const char *githubReleaseApi = "https://api.github.com/repos/karola3vax/CS2AC/releases/latest";
+	constexpr const char *gitlabReleaseApi = "https://gitlab.com/api/v4/projects/karola3vax-group%2Fcs2ac/releases/permalink/latest";
+	constexpr const char *gitlabPackagePrefix = "https://gitlab.com/api/v4/projects/karola3vax-group%2Fcs2ac/packages/generic/cs2ac/";
 
 #ifdef _WIN32
 	constexpr const char *platformName = "windows";
@@ -504,7 +506,7 @@ void UpdaterService::OnGameFrame()
 	}
 }
 
-void UpdaterService::CheckRelease()
+void UpdaterService::CheckRelease(UpdateSource source)
 {
 	if (!http && (!steamContext.Init() || !(http = steamContext.SteamHTTP())))
 	{
@@ -517,18 +519,30 @@ void UpdaterService::CheckRelease()
 		return;
 	}
 	httpUnavailableWarned = false;
+	updateSource = source;
+	const char *releaseApi = source == UpdateSource::GitHub ? githubReleaseApi : gitlabReleaseApi;
 	request = http->CreateHTTPRequest(k_EHTTPMethodGET, releaseApi);
-	if (request == INVALID_HTTPREQUEST_HANDLE || !http->SetHTTPRequestHeaderValue(request, "Accept", "application/vnd.github+json")
-		|| !http->SetHTTPRequestHeaderValue(request, "X-GitHub-Api-Version", "2022-11-28")
+	if (request == INVALID_HTTPREQUEST_HANDLE || !http->SetHTTPRequestHeaderValue(request, "Accept", "application/json")
+		|| (source == UpdateSource::GitHub && !http->SetHTTPRequestHeaderValue(request, "X-GitHub-Api-Version", "2022-11-28"))
 		|| !http->SetHTTPRequestUserAgentInfo(request, "CS2AC-Updater") || !http->SetHTTPRequestNetworkActivityTimeout(request, 10)
 		|| !http->SetHTTPRequestAbsoluteTimeoutMS(request, 20000) || !http->SetHTTPRequestRequiresVerifiedCertificate(request, true))
 	{
+		if (source == UpdateSource::GitHub)
+		{
+			TryGitLab(" while checking releases.");
+			return;
+		}
 		RetryLater("The release check could not be prepared.");
 		return;
 	}
 	SteamAPICall_t call {};
 	if (!http->SendHTTPRequest(request, &call))
 	{
+		if (source == UpdateSource::GitHub)
+		{
+			TryGitLab(" while checking releases.");
+			return;
+		}
 		RetryLater("The release check could not be sent.");
 		return;
 	}
@@ -544,12 +558,22 @@ void UpdaterService::DownloadPackage()
 		|| !http->SetHTTPRequestNetworkActivityTimeout(request, 20) || !http->SetHTTPRequestAbsoluteTimeoutMS(request, 120000)
 		|| !http->SetHTTPRequestRequiresVerifiedCertificate(request, true))
 	{
+		if (updateSource == UpdateSource::GitHub)
+		{
+			TryGitLab(" while downloading the package.");
+			return;
+		}
 		RetryLater("The update download could not be prepared.");
 		return;
 	}
 	SteamAPICall_t call {};
 	if (!http->SendHTTPRequest(request, &call))
 	{
+		if (updateSource == UpdateSource::GitHub)
+		{
+			TryGitLab(" while downloading the package.");
+			return;
+		}
 		RetryLater("The update download could not be sent.");
 		return;
 	}
@@ -570,20 +594,38 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 		return;
 	}
 	const RequestKind completedKind = requestKind;
+	const UpdateSource completedSource = updateSource;
 	const int status = static_cast<int>(result->m_eStatusCode);
 	std::vector<std::uint8_t> body;
 	const bool responseReady = !failed && result->m_bRequestSuccessful && status >= 200 && status <= 299
 							   && ReadResponse(body, completedKind == RequestKind::Release ? maximumReleaseResponseSize : maximumPackageSize);
+	const bool packageMetadataReady =
+		responseReady && completedKind == RequestKind::Package && completedSource == UpdateSource::GitLab ? ReadGitLabPackageMetadata() : true;
 	CancelRequest();
 	if (!responseReady)
 	{
+		if (completedSource == UpdateSource::GitHub)
+		{
+			TryGitLab(tfm::format(" with HTTP %d.", status).c_str());
+			return;
+		}
 		RetryLater(tfm::format("The automatic update request failed with HTTP %d.", status).c_str());
+		return;
+	}
+	if (!packageMetadataReady)
+	{
+		RetryLater("The GitLab package did not provide a valid checksum or size.");
 		return;
 	}
 	if (completedKind == RequestKind::Release)
 	{
-		if (!SelectRelease(body))
+		if (!SelectRelease(body, completedSource))
 		{
+			if (completedSource == UpdateSource::GitHub && releaseSelectionFailed)
+			{
+				TryGitLab(" because its release metadata was unusable.");
+				return;
+			}
 			nextCheck = std::chrono::steady_clock::now() + (releaseSelectionFailed ? retryDelay : regularCheckDelay);
 			return;
 		}
@@ -594,6 +636,11 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 	{
 		Msg("[CS2AC] CS2AC %s is ready. It will be installed the next time the server starts.\n", updateVersion.c_str());
 		nextCheck = std::chrono::steady_clock::now() + regularCheckDelay;
+		return;
+	}
+	if (completedSource == UpdateSource::GitHub)
+	{
+		TryGitLab(" because its package failed validation.");
 		return;
 	}
 	RetryLater("The downloaded update did not pass validation.");
@@ -608,6 +655,13 @@ void UpdaterService::CancelRequest()
 	}
 	request = INVALID_HTTPREQUEST_HANDLE;
 	requestKind = RequestKind::None;
+}
+
+void UpdaterService::TryGitLab(const char *reason)
+{
+	CancelRequest();
+	Msg("[CS2AC] GitHub automatic updater failed%s Trying GitLab.\n", reason ? reason : ".");
+	CheckRelease(UpdateSource::GitLab);
 }
 
 void UpdaterService::RetryLater(const char *reason)
@@ -628,7 +682,46 @@ bool UpdaterService::ReadResponse(std::vector<std::uint8_t> &body, std::uint32_t
 	return http->GetHTTPResponseBodyData(request, body.data(), size);
 }
 
-bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
+bool UpdaterService::ReadGitLabPackageMetadata()
+{
+	if (!http || request == INVALID_HTTPREQUEST_HANDLE)
+	{
+		return false;
+	}
+	std::uint32_t headerSize {};
+	if (!http->GetHTTPResponseHeaderSize(request, "x-checksum-sha256", &headerSize) || headerSize == 0 || headerSize > 128)
+	{
+		return false;
+	}
+	std::vector<std::uint8_t> header(headerSize);
+	if (!http->GetHTTPResponseHeaderValue(request, "x-checksum-sha256", header.data(), headerSize))
+	{
+		return false;
+	}
+	std::string digest(reinterpret_cast<const char *>(header.data()), header.size());
+	while (!digest.empty() && (digest.back() == '\0' || std::isspace(static_cast<unsigned char>(digest.back()))))
+	{
+		digest.pop_back();
+	}
+	while (!digest.empty() && std::isspace(static_cast<unsigned char>(digest.front())))
+	{
+		digest.erase(digest.begin());
+	}
+	if (digest.size() != 64 || !std::all_of(digest.begin(), digest.end(), [](unsigned char character) { return std::isxdigit(character); }))
+	{
+		return false;
+	}
+	std::uint32_t bodySize {};
+	if (!http->GetHTTPResponseBodySize(request, &bodySize) || !bodySize || bodySize > maximumPackageSize)
+	{
+		return false;
+	}
+	expectedDigest = "sha256:" + digest;
+	expectedSize = bodySize;
+	return true;
+}
+
+bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body, UpdateSource source)
 {
 	releaseSelectionFailed = false;
 	CUtlBuffer buffer(body.data(), static_cast<int>(body.size()), CUtlBuffer::READ_ONLY);
@@ -638,15 +731,15 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
 	if (!release || !parsed)
 	{
 		releaseSelectionFailed = true;
-		Warning("[CS2AC] GitHub returned release information CS2AC could not read.\n");
+		Warning("[CS2AC] %s returned release information CS2AC could not read.\n", source == UpdateSource::GitHub ? "GitHub" : "GitLab");
 		return false;
 	}
 
 	const std::string tag = release->GetString("tag_name", "");
 	Version available;
 	Version current;
-	const bool newer = !release->GetBool("draft") && !release->GetBool("prerelease") && ParseVersion(tag, available)
-					   && ParseVersion(PLUGIN_FULL_VERSION, current) && CompareVersions(available, current) > 0;
+	const bool newer = !release->GetBool("draft") && !release->GetBool("prerelease") && !release->GetBool("upcoming_release")
+					   && ParseVersion(tag, available) && ParseVersion(PLUGIN_FULL_VERSION, current) && CompareVersions(available, current) > 0;
 	if (!newer)
 	{
 		return false;
@@ -657,6 +750,11 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
 	downloadUrl.clear();
 	expectedDigest.clear();
 	expectedSize = 0;
+	if (source == UpdateSource::GitLab)
+	{
+		downloadUrl = std::string(gitlabPackagePrefix) + tag + "/" + expectedName;
+		return true;
+	}
 	KeyValues *assets = release->FindKey("assets", false);
 	for (KeyValues *asset = assets ? assets->GetFirstSubKey() : nullptr; asset; asset = asset->GetNextKey())
 	{
