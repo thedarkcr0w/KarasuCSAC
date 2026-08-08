@@ -10,7 +10,9 @@ languages = {
     "th", "tr", "uk", "vi", "zh-cn", "zh-tw",
 }
 entry = re.compile(r'^\s*"([^"\\]+)"\s+"((?:\\.|[^"\\])*)"\s*$')
+# These tokens are chat formatting directives, not translation arguments.
 placeholder = re.compile(r"\{[A-Za-z0-9_.]+\}")
+chat_markup = {"red", "lime", "grey", "blue", "default"}
 evidence_template_limit = 700  # Discord allows 1024 characters; dynamic values need the remaining space.
 
 
@@ -28,6 +30,10 @@ def load(path: Path) -> dict[str, str]:
             raise ValueError(f"{path}:{number}: duplicate phrase {key}")
         phrases[key] = value
     return phrases
+
+
+def placeholders(value: str) -> set[str]:
+    return {match[1:-1] for match in placeholder.findall(value) if match[1:-1] not in chat_markup}
 
 
 files = {path.stem for path in root.glob("*.txt")}
@@ -66,7 +72,7 @@ for path in sorted(root.glob("*.txt")):
             f"extra={phrases.keys() - english.keys()}"
         )
     for key, value in phrases.items():
-        if set(placeholder.findall(value)) != set(placeholder.findall(english[key])):
+        if placeholders(value) != placeholders(english[key]):
             raise ValueError(f"{path}: placeholders differ for {key}")
         if key.startswith("evidence.") and len(value) > evidence_template_limit:
             raise ValueError(f"{path}: {key} is too long for a readable Discord evidence field")

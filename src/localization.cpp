@@ -95,9 +95,11 @@ namespace
 				break;
 			}
 			const std::string_view name = text.substr(start + 1, end - start - 1);
+			// Chat color directives are formatting, not translation arguments.
 			if (!name.empty()
 				&& std::all_of(name.begin(), name.end(),
-							   [](unsigned char character) { return std::isalnum(character) || character == '_' || character == '.'; }))
+							   [](unsigned char character) { return std::isalnum(character) || character == '_' || character == '.'; })
+				&& name != "red" && name != "lime" && name != "grey" && name != "blue" && name != "default")
 			{
 				result.emplace(name);
 			}
