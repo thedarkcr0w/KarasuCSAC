@@ -51,8 +51,8 @@ class MMSPluginConfig(object):
       raise Exception('plugin-metadata.json is missing: {}.'.format(', '.join(missing)))
     if metadata['name'] != 'cs2ac' or metadata['alias'] != 'cs2ac':
       raise Exception('The plugin name and alias must both stay cs2ac.')
-    if metadata['version'] != '1.0.18':
-      raise Exception('The CS2AC version must be 1.0.18.')
+    if metadata['version'] != '1.0.19':
+      raise Exception('The CS2AC version must be 1.0.19.')
     return metadata
 
   def findSdkPath(self, sdk_name):

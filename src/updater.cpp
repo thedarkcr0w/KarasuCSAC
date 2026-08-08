@@ -342,19 +342,27 @@ namespace
 		return path.rfind(pluginPrefix, 0) == 0 || path == "game/csgo/addons/metamod/cs2ac.vdf" || path == "game/csgo/cfg/cs2ac.cfg";
 	}
 
-	bool ExtractPackage(const std::vector<std::uint8_t> &body, const fs::path &destination)
+	bool ExtractPackage(const std::vector<std::uint8_t> &body, const fs::path &destination, std::string *failureReason = nullptr)
 	{
+		auto fail = [failureReason](std::string reason)
+		{
+			if (failureReason)
+			{
+				*failureReason = std::move(reason);
+			}
+			return false;
+		};
 		mz_zip_archive archive {};
 		if (!mz_zip_reader_init_mem(&archive, body.data(), body.size(), 0))
 		{
-			return false;
+			return fail("the ZIP container could not be opened");
 		}
 		const bool extracted = [&]()
 		{
 			const mz_uint files = mz_zip_reader_get_num_files(&archive);
 			if (!files || files > maximumArchiveFiles)
 			{
-				return false;
+				return fail("the ZIP has no files or contains too many files");
 			}
 			std::uint64_t totalSize = 0;
 			for (mz_uint index = 0; index < files; ++index)
@@ -362,16 +370,20 @@ namespace
 				mz_zip_archive_file_stat file {};
 				if (!mz_zip_reader_file_stat(&archive, index, &file))
 				{
-					return false;
+					return fail("the ZIP file table could not be read");
 				}
-				if (file.m_is_directory)
+				std::string path(file.m_filename);
+				std::replace(path.begin(), path.end(), '\\', '/');
+				// Windows ZIP writers commonly use backslashes and miniz does not
+				// always mark those directory entries as directories. Normalize them
+				// before validation and skip directory-shaped entries explicitly.
+				if (file.m_is_directory || (!path.empty() && path.back() == '/'))
 				{
 					continue;
 				}
-				const std::string_view path(file.m_filename);
 				if (!SafeArchivePath(path) || file.m_uncomp_size > maximumPackageSize || totalSize > maximumExtractedSize - file.m_uncomp_size)
 				{
-					return false;
+					return fail("the ZIP contains an unsafe or oversized path: " + path);
 				}
 				totalSize += file.m_uncomp_size;
 				std::vector<std::uint8_t> contents(static_cast<std::size_t>(file.m_uncomp_size));
@@ -379,7 +391,7 @@ namespace
 				if (!mz_zip_reader_extract_to_mem(&archive, index, contents.empty() ? &emptyFile : contents.data(), contents.size(), 0)
 					|| !WriteFileAtomically(destination / path, contents.data(), contents.size()))
 				{
-					return false;
+					return fail("a ZIP file could not be extracted or written");
 				}
 			}
 			return true;
@@ -838,9 +850,10 @@ bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body, std::st
 	{
 		return fail("could not clear the previous staging directory: " + error.message());
 	}
-	if (!ExtractPackage(body, CsgoRoot() / relativeStage))
+	std::string extractFailure;
+	if (!ExtractPackage(body, CsgoRoot() / relativeStage, &extractFailure))
 	{
-		return fail("archive extraction failed or the archive contained an unsafe path");
+		return fail(extractFailure.empty() ? "archive extraction failed" : extractFailure);
 	}
 
 	const fs::path packageRoot = CsgoRoot() / relativeStage / "game" / "csgo";
