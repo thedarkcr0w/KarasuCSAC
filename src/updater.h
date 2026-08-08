@@ -37,7 +37,7 @@ private:
 	bool ReadResponse(std::vector<std::uint8_t> &body, std::uint32_t maximumSize) const;
 	bool ReadGitLabPackageMetadata();
 	bool SelectRelease(const std::vector<std::uint8_t> &body, UpdateSource source);
-	bool StagePackage(const std::vector<std::uint8_t> &body);
+	bool StagePackage(const std::vector<std::uint8_t> &body, std::string &failureReason);
 
 	CSteamGameServerAPIContext steamContext;
 	ISteamHTTP *http {};

@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <utility>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -632,7 +633,8 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 		DownloadPackage();
 		return;
 	}
-	if (completedKind == RequestKind::Package && StagePackage(body))
+	std::string stageFailure;
+	if (completedKind == RequestKind::Package && StagePackage(body, stageFailure))
 	{
 		Msg("[CS2AC] CS2AC %s is ready. It will be installed the next time the server starts.\n", updateVersion.c_str());
 		nextCheck = std::chrono::steady_clock::now() + regularCheckDelay;
@@ -640,7 +642,17 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 	}
 	if (completedSource == UpdateSource::GitHub)
 	{
+		if (!stageFailure.empty())
+		{
+			Warning("[CS2AC] GitHub update staging failed: %s Trying GitLab.\n", stageFailure.c_str());
+		}
 		TryGitLab(" because its package failed validation.");
+		return;
+	}
+	if (!stageFailure.empty())
+	{
+		const std::string reason = tfm::format("The downloaded update did not pass validation: %s.", stageFailure.c_str());
+		RetryLater(reason.c_str());
 		return;
 	}
 	RetryLater("The downloaded update did not pass validation.");
@@ -779,11 +791,36 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body, Update
 	return true;
 }
 
-bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body)
+bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body, std::string &failureReason)
 {
+	failureReason.clear();
+	auto fail = [&failureReason](std::string reason)
+	{
+		failureReason = std::move(reason);
+		return false;
+	};
+	auto requireFile = [&fail](const fs::path &path)
+	{
+		std::error_code error;
+		if (!fs::is_regular_file(path, error))
+		{
+			return fail("required file is missing: " + path.string());
+		}
+		return true;
+	};
+	auto requireDirectory = [&fail](const fs::path &path)
+	{
+		std::error_code error;
+		if (!fs::is_directory(path, error))
+		{
+			return fail("required directory is missing: " + path.string());
+		}
+		return true;
+	};
+
 	if (GameRoot().empty() || body.size() != expectedSize)
 	{
-		return false;
+		return fail(GameRoot().empty() ? "the game directory is unavailable" : "download size does not match the response metadata");
 	}
 	std::string actualDigest = picosha2::hash256_hex_string(body.begin(), body.end());
 	std::transform(actualDigest.begin(), actualDigest.end(), actualDigest.begin(), [](unsigned char character) { return std::tolower(character); });
@@ -791,29 +828,45 @@ bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body)
 	std::transform(wantedDigest.begin(), wantedDigest.end(), wantedDigest.begin(), [](unsigned char character) { return std::tolower(character); });
 	if (actualDigest != wantedDigest || !IsSafeVersion(updateVersion))
 	{
-		return false;
+		return fail(actualDigest != wantedDigest ? "downloaded SHA-256 does not match the response checksum" : "the update version is invalid");
 	}
 
 	const fs::path relativeStage = fs::path("addons") / "cs2ac" / "update" / updateVersion;
 	std::error_code error;
 	fs::remove_all(CsgoRoot() / relativeStage, error);
-	if (error || !ExtractPackage(body, CsgoRoot() / relativeStage))
+	if (error)
 	{
-		return false;
+		return fail("could not clear the previous staging directory: " + error.message());
+	}
+	if (!ExtractPackage(body, CsgoRoot() / relativeStage))
+	{
+		return fail("archive extraction failed or the archive contained an unsafe path");
 	}
 
 	const fs::path packageRoot = CsgoRoot() / relativeStage / "game" / "csgo";
 	const fs::path packageBinary = packageRoot / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac") + binaryExtension);
 	// Keep this name dot-free because Metamod treats a dotted version suffix as the binary extension.
 	const fs::path updateBinary = CsgoRoot() / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac-update") + binaryExtension);
-	if (!fs::is_regular_file(packageBinary, error) || !fs::is_regular_file(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt", error)
-		|| !fs::is_directory(packageRoot / "addons" / "cs2ac" / "translations", error)
-		|| !fs::is_directory(packageRoot / "addons" / "cs2ac" / "licenses", error)
-		|| !fs::is_regular_file(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md", error)
-		|| !fs::is_regular_file(packageRoot / "cfg" / "cs2ac.cfg", error) || !CopyFileAtomically(packageBinary, updateBinary)
-		|| !WriteTextFileAtomically(PendingMarker(), updateVersion + "\n") || !WriteVdf("cs2ac-update"))
+	if (!requireFile(packageBinary)
+		|| !requireFile(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt")
+		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "translations")
+		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "licenses")
+		|| !requireFile(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md")
+		|| !requireFile(packageRoot / "cfg" / "cs2ac.cfg"))
 	{
 		return false;
+	}
+	if (!CopyFileAtomically(packageBinary, updateBinary))
+	{
+		return fail("could not write the staged plugin binary; check server directory permissions");
+	}
+	if (!WriteTextFileAtomically(PendingMarker(), updateVersion + "\n"))
+	{
+		return fail("could not write the pending update marker; check server directory permissions");
+	}
+	if (!WriteVdf("cs2ac-update"))
+	{
+		return fail("could not update the Metamod VDF; check addons/metamod permissions");
 	}
 	return true;
 }
