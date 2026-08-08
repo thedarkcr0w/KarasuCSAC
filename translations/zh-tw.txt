@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"支持 CS2AC 的持續開發：{url}"
+	"announcement.support"	"支持開發：{url}"
 	"announcement.detected"	"在玩家 {player} 身上偵測到 {detection}{outcome}"
 	"announcement.outcome.punishment_sent"	"，並已執行處罰。"
 	"announcement.outcome.whitelisted"	"，但該玩家在白名單中。"

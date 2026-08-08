@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Paremkite tęstinį CS2AC kūrimą: {url}"
+	"announcement.support"	"Paremkite plėtrą: {url}"
 	"announcement.detected"	"aptiko {detection} pas žaidėją {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" ir pritaikė bausmę."
 	"announcement.outcome.whitelisted"	", bet žaidėjas yra baltajame sąraše."

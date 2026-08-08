@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Támogasd a CS2AC folyamatos fejlesztését: {url}"
+	"announcement.support"	"Támogasd a fejlesztést: {url}"
 	"announcement.detected"	"{detection} észlelve {player} játékosnál{outcome}"
 	"announcement.outcome.punishment_sent"	", a büntetés végrehajtva."
 	"announcement.outcome.whitelisted"	", de a játékos fehérlistán van."

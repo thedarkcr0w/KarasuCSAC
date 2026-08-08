@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Dukung pengembangan CS2AC yang berkelanjutan: {url}"
+	"announcement.support"	"Dukung pengembangan: {url}"
 	"announcement.detected"	"mendeteksi {detection} pada {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" dan menjalankan hukuman."
 	"announcement.outcome.whitelisted"	", tetapi pemain ada di daftar putih."

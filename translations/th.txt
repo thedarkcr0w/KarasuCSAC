@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"สนับสนุนการพัฒนา CS2AC อย่างต่อเนื่อง: {url}"
+	"announcement.support"	"สนับสนุนการพัฒนา: {url}"
 	"announcement.detected"	"ตรวจพบ {detection} จากผู้เล่น {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" และดำเนินการลงโทษแล้ว"
 	"announcement.outcome.whitelisted"	" แต่ผู้เล่นอยู่ในไวท์ลิสต์"

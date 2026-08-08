@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Hãy ủng hộ việc phát triển CS2AC liên tục: {url}"
+	"announcement.support"	"Hỗ trợ phát triển: {url}"
 	"announcement.detected"	"đã phát hiện {detection} ở {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" và đã thực hiện hình phạt."
 	"announcement.outcome.whitelisted"	", nhưng người chơi nằm trong danh sách trắng."

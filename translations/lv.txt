@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Atbalstiet nepārtrauktu CS2AC izstrādi: {url}"
+	"announcement.support"	"Atbalstiet izstrādi: {url}"
 	"announcement.detected"	"konstatēja {detection} spēlētājam {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" un izpildīja sodu."
 	"announcement.outcome.whitelisted"	", bet spēlētājs ir baltajā sarakstā."

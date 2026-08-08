@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Podržite dalji razvoj CS2AC: {url}"
+	"announcement.support"	"Podržite razvoj: {url}"
 	"announcement.detected"	"je otkrio {detection} kod igrača {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" i izvršio kaznu."
 	"announcement.outcome.whitelisted"	", ali je igrač na beloj listi."

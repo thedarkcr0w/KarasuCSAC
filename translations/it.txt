@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Sostieni lo sviluppo continuo di CS2AC: {url}"
+	"announcement.support"	"Sostieni lo sviluppo: {url}"
 	"announcement.detected"	"ha rilevato {detection} su {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" e ha applicato la punizione."
 	"announcement.outcome.whitelisted"	", ma il giocatore è nella whitelist."

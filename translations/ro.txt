@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Sprijină dezvoltarea continuă a CS2AC: {url}"
+	"announcement.support"	"Sprijină dezvoltarea: {url}"
 	"announcement.detected"	"a detectat {detection} la {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" și a aplicat pedeapsa."
 	"announcement.outcome.whitelisted"	", dar jucătorul este pe lista albă."
