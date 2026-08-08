@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Dukung pengembangan: {url}"
+	"announcement.support"	"Dukung pengembangan: {blue}{url}{default}"
 	"announcement.detected"	"mendeteksi {detection} pada {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" dan menjalankan hukuman."
 	"announcement.outcome.whitelisted"	", tetapi pemain ada di daftar putih."

@@ -31,6 +31,10 @@ static_function char ConvertColorStringToByte(const char *str, size_t length)
 			{
 				return 8;
 			}
+			if (!V_memcmp(str, "blue", length))
+			{
+				return 12;
+			}
 			break;
 		case 7:
 			if (!V_memcmp(str, "default", length))

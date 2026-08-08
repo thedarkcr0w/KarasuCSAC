@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Toeta arendust: {url}"
+	"announcement.support"	"Toeta arendust: {blue}{url}{default}"
 	"announcement.detected"	"tuvastas {detection} mängijal {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" ja rakendas karistuse."
 	"announcement.outcome.whitelisted"	", kuid mängija on lubatud nimekirjas."

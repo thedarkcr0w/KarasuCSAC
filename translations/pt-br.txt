@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Apoie o desenvolvimento: {url}"
+	"announcement.support"	"Apoie o desenvolvimento: {blue}{url}{default}"
 	"announcement.detected"	"detectou {detection} em {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" e aplicou a punição."
 	"announcement.outcome.whitelisted"	", mas o jogador está na lista de permissões."

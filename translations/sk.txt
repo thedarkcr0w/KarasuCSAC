@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Podporte vývoj: {url}"
+	"announcement.support"	"Podporte vývoj: {blue}{url}{default}"
 	"announcement.detected"	"zistil {detection} u hráča {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" a vykonal trest."
 	"announcement.outcome.whitelisted"	", ale hráč je na bielej listine."

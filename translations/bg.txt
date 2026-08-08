@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Подкрепете разработката: {url}"
+	"announcement.support"	"Подкрепете разработката: {blue}{url}{default}"
 	"announcement.detected"	"засече {detection} при {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" и приложи наказанието."
 	"announcement.outcome.whitelisted"	", но играчът е в белия списък."

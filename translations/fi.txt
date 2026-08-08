@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Tue kehitystyötä: {url}"
+	"announcement.support"	"Tue kehitystyötä: {blue}{url}{default}"
 	"announcement.detected"	"havaitsi {detection}-toiminnan pelaajalla {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" ja suoritti rangaistuksen."
 	"announcement.outcome.whitelisted"	", mutta pelaaja on sallittujen listalla."

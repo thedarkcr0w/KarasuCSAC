@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"ادعم التطوير: {url}"
+	"announcement.support"	"ادعم التطوير: {blue}{url}{default}"
 	"announcement.detected"	"اكتشف {detection} لدى اللاعب {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" ونفّذ العقوبة."
 	"announcement.outcome.whitelisted"	"، لكن اللاعب في القائمة البيضاء."

@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"開発を支援してください: {url}"
+	"announcement.support"	"開発を支援してください: {blue}{url}{default}"
 	"announcement.detected"	"{player} から {detection} を検出しました{outcome}"
 	"announcement.outcome.punishment_sent"	"。処罰を実行しました。"
 	"announcement.outcome.whitelisted"	"が、このプレイヤーはホワイトリストに登録されています。"

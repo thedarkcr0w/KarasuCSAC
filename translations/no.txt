@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Støtt utviklingen: {url}"
+	"announcement.support"	"Støtt utviklingen: {blue}{url}{default}"
 	"announcement.detected"	"oppdaget {detection} hos {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" og utførte straffen."
 	"announcement.outcome.whitelisted"	", men spilleren står på hvitelisten."

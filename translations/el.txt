@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Υποστηρίξτε την ανάπτυξη: {url}"
+	"announcement.support"	"Υποστηρίξτε την ανάπτυξη: {blue}{url}{default}"
 	"announcement.detected"	"εντόπισε {detection} στον παίκτη {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" και εφάρμοσε την ποινή."
 	"announcement.outcome.whitelisted"	", αλλά ο παίκτης είναι στη λίστα εξαίρεσης."

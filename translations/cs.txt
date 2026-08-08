@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Podpořte vývoj: {url}"
+	"announcement.support"	"Podpořte vývoj: {blue}{url}{default}"
 	"announcement.detected"	"zjistil {detection} u hráče {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" a provedl trest."
 	"announcement.outcome.whitelisted"	", ale hráč je na bílé listině."

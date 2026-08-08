@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Support development: {url}"
+	"announcement.support"	"Support development: {blue}{url}{default}"
 	"announcement.detected"	"detected {detection} on {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" and sent the punishment."
 	"announcement.outcome.whitelisted"	", but they are whitelisted."

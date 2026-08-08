@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Geliştirmeyi destekle: {url}"
+	"announcement.support"	"Geliştirmeyi destekle: {blue}{url}{default}"
 	"announcement.detected"	"{player} üzerinde {detection} tespit etti{outcome}"
 	"announcement.outcome.punishment_sent"	" ve cezayı uyguladı."
 	"announcement.outcome.whitelisted"	", ancak oyuncu beyaz listede."

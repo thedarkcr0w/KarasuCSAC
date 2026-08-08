@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"Поддержите разработку: {url}"
+	"announcement.support"	"Поддержите разработку: {blue}{url}{default}"
 	"announcement.detected"	"обнаружил {detection} у игрока {player}{outcome}"
 	"announcement.outcome.punishment_sent"	" и применил наказание."
 	"announcement.outcome.whitelisted"	", но игрок находится в белом списке."

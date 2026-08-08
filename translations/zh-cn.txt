@@ -1,6 +1,6 @@
 "Phrases"
 {
-	"announcement.support"	"支持开发：{url}"
+	"announcement.support"	"支持开发：{blue}{url}{default}"
 	"announcement.detected"	"在玩家 {player} 身上检测到 {detection}{outcome}"
 	"announcement.outcome.punishment_sent"	"，并已执行处罚。"
 	"announcement.outcome.whitelisted"	"，但该玩家在白名单中。"
