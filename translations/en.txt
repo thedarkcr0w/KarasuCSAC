@@ -32,7 +32,7 @@
 	"evidence.irregular_behavior"	"The player repeatedly attempted airborne shots or sniper shots without scoping. {successes} of {attempts} attempts became kills ({accuracy}% success), bringing the score to {score}/{threshold}."
 	"evidence.triggerbot"	"{ticks} ticks - {context} - {points}"
 	"evidence.triggerbot.context.aim_driven"	"the aim moved onto the target"
-	"evidence.triggerbot.context.target_driven"	"the player held an angle and the target entered the aim"
+	"evidence.triggerbot.context.target_driven"	"the player held an angle and the target entered the crosshair"
 	"evidence.triggerbot.hitgroup.head"	"head"
 	"evidence.triggerbot.hitgroup.chest"	"chest"
 	"evidence.triggerbot.hitgroup.stomach"	"stomach"
@@ -120,5 +120,5 @@
 	"evidence.aimbot.latest.snap_return"	"During the latest damaging shot, the aim jumped {snap} degrees and immediately returned. Evidence: {incidents}/{threshold} within five minutes."
 	"evidence.aimbot.latest.convergence"	"During the latest damaging shot, the aim moved {snap} degrees in one step and its distance from the enemy fell from {before} to {after} degrees. Evidence: {incidents}/{threshold} within five minutes."
 	"evidence.aimbot.latest.smooth"	"During the latest damaging shot, the aim followed an unusually clean {snap} degree curve and its distance from the enemy fell from {before} to {after} degrees. Evidence: {incidents}/{threshold} within five minutes."
-	"evidence.triggerbot.latest"	"The player dealt {damage} damage to the target's {hitgroup} {latest_ticks} game-update intervals after fresh contact, while {context}; the target was player slot {target}. Score: {score}/{threshold} within five minutes."
+	"evidence.triggerbot.latest"	"The player dealt {damage} damage to the target's {hitgroup} after {latest_ticks} game-update intervals from fresh contact; {context}. Target player slot: {target}. Score: {score}/{threshold} within five minutes."
 }

@@ -14,6 +14,15 @@ entry = re.compile(r'^\s*"([^"\\]+)"\s+"((?:\\.|[^"\\])*)"\s*$')
 placeholder = re.compile(r"\{[A-Za-z0-9_.]+\}")
 chat_markup = {"red", "lime", "grey", "blue", "default"}
 evidence_template_limit = 700  # Discord allows 1024 characters; dynamic values need the remaining space.
+technical_compact_keys = {
+    "evidence.aimbot.snap_return",
+    "evidence.aimbot.convergence",
+    "evidence.aimbot.smooth",
+    "evidence.silentaim",
+    "evidence.triggerbot",
+    "evidence.antiaim.category_entry",
+    "webhook.field.steamid64",
+}
 
 
 def load(path: Path) -> dict[str, str]:
@@ -74,6 +83,12 @@ for path in sorted(root.glob("*.txt")):
     for key, value in phrases.items():
         if placeholders(value) != placeholders(english[key]):
             raise ValueError(f"{path}: placeholders differ for {key}")
+        if "@{" in value:
+            raise ValueError(f"{path}: stray @ before placeholder for {key}")
+        if "?" in value:
+            raise ValueError(f"{path}: replacement character '?' in {key}")
+        if path.stem != "en" and value == english[key] and len(value) > 30 and key not in technical_compact_keys:
+            raise ValueError(f"{path}: untranslated English phrase for {key}")
         if key.startswith("evidence.") and len(value) > evidence_template_limit:
             raise ValueError(f"{path}: {key} is too long for a readable Discord evidence field")
 
