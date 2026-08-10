@@ -25,8 +25,7 @@ namespace
 	constexpr size_t commandHistorySize = 128;
 	constexpr int snapWindowTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr float minimumDistance = 100.0f;
-	constexpr int snapDetectionThreshold = 3;
-	constexpr int smoothDetectionThreshold = 3;
+	constexpr int detectionThreshold = 3;
 	constexpr auto evidenceWindow = std::chrono::minutes(5);
 	// A confirmed smoothed-aimbot demo produced 12 damaging curves inside this envelope: 13.66-29.69 degrees of travel,
 	// 94.9-99.5% error removal, 0.12-0.85 degrees of final error, 94.6-100% path efficiency, and 3-5 shrinking steps.
@@ -97,8 +96,7 @@ namespace detection
 	void AimbotModule::Reset()
 	{
 		playerData = {};
-		snapEvidence = {};
-		smoothEvidence = {};
+		evidence = {};
 	}
 
 	void AimbotModule::OnProcessUsercmds(MovementPlayer *player, PlayerCommand *commands, int numCommands)
@@ -512,33 +510,29 @@ namespace detection
 				incidents.pop_front();
 			}
 		};
-		auto &snapIncidents = snapEvidence[attacker->index];
-		auto &smoothIncidents = smoothEvidence[attacker->index];
-		purge(snapIncidents);
-		purge(smoothIncidents);
-		auto &incidents = matchedRule == AimbotRule::SmoothConvergence ? smoothIncidents : snapIncidents;
+		auto &incidents = evidence[attacker->index];
+		purge(incidents);
 		const AimbotEvidenceType evidenceType = matchedRule == AimbotRule::SnapReturn          ? AimbotEvidenceType::SnapReturn
 												: matchedRule == AimbotRule::SmoothConvergence ? AimbotEvidenceType::SmoothConvergence
 																							   : AimbotEvidenceType::Convergence;
 		incidents.push_back({now, evidenceType, largestSnap, bestBefore, bestAfter});
-		const int threshold = matchedRule == AimbotRule::SmoothConvergence ? smoothDetectionThreshold : snapDetectionThreshold;
 		if (matchedRule == AimbotRule::SmoothConvergence)
 		{
 			AIMBOT_DEBUG("%s counted smooth convergence %.2f, target error %.2f -> %.2f, path %.1f%%, steps %d, evidence %d/%d.\n",
 						 attacker->GetName(), smoothMovement, smoothBefore, smoothAfter, smoothEfficiency * 100.0f, smoothSteps,
-						 static_cast<int>(incidents.size()), threshold);
+						 static_cast<int>(incidents.size()), detectionThreshold);
 		}
 		else if (matchedRule == AimbotRule::SnapReturn)
 		{
 			AIMBOT_DEBUG("%s counted snap-return %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, static_cast<int>(incidents.size()),
-						 threshold);
+						 detectionThreshold);
 		}
 		else
 		{
 			AIMBOT_DEBUG("%s counted convergence %.2f, target error %.2f -> %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, bestBefore,
-						 bestAfter, static_cast<int>(incidents.size()), threshold);
+						 bestAfter, static_cast<int>(incidents.size()), detectionThreshold);
 		}
-		if (incidents.size() >= static_cast<size_t>(threshold))
+		if (incidents.size() >= static_cast<size_t>(detectionThreshold))
 		{
 			if (announce)
 			{
@@ -567,7 +561,7 @@ namespace detection
 					}
 				}
 				const auto values = localization::Arguments {{"incidents", tfm::format("%zu", incidents.size())},
-															 {"threshold", tfm::format("%d", threshold)},
+															 {"threshold", tfm::format("%d", detectionThreshold)},
 															 {"snap", tfm::format("%.2f", largestSnap)},
 															 {"before", tfm::format("%.2f", bestBefore)},
 															 {"after", tfm::format("%.2f", bestAfter)}};
@@ -590,8 +584,7 @@ namespace detection
 							  values);
 				announce("AIMBOT", attacker, FormatEvidenceHistory(history, latest));
 			}
-			snapIncidents.clear();
-			smoothIncidents.clear();
+			incidents.clear();
 		}
 		return true;
 	}
@@ -601,8 +594,7 @@ namespace detection
 		if (player && player->index >= 1 && player->index <= MAXPLAYERS)
 		{
 			playerData[player->index] = {};
-			snapEvidence[player->index].clear();
-			smoothEvidence[player->index].clear();
+			evidence[player->index].clear();
 		}
 	}
 } // namespace detection
