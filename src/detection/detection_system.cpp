@@ -148,6 +148,9 @@ namespace detection
 		}
 		positionFrames.clear();
 		nextShotId = 1;
+		bulletHitsMatched = 0;
+		bulletHitsUnmatched = 0;
+		bulletHitsAmbiguous = 0;
 	}
 
 	void ShotCorrelator::OnClientDisconnect(MovementPlayer *player)
@@ -490,14 +493,27 @@ namespace detection
 
 	ShotRecord *ShotCorrelator::OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick)
 	{
+		auto debugTotals = [&](const char *result)
+		{
+			if (cs2ac_aimbot_debug.GetBool())
+			{
+				Msg("[CS2AC Aimbot] PlayerBulletHit %s; totals matched=%llu unmatched=%llu ambiguous=%llu.\n", result,
+					static_cast<unsigned long long>(bulletHitsMatched), static_cast<unsigned long long>(bulletHitsUnmatched),
+					static_cast<unsigned long long>(bulletHitsAmbiguous));
+			}
+		};
 		if (!event.has_attacker_slot() || !event.has_victim_slot() || !g_pCS2ACPlayerManager)
 		{
+			++bulletHitsUnmatched;
+			debugTotals("rejected because required fields or the player manager are unavailable");
 			return nullptr;
 		}
 		const int attackerSlot = event.attacker_slot();
 		const int victimSlot = event.victim_slot();
 		if (attackerSlot < 0 || attackerSlot >= MAXPLAYERS || victimSlot < 0 || victimSlot >= MAXPLAYERS || attackerSlot == victimSlot)
 		{
+			++bulletHitsUnmatched;
+			debugTotals("rejected because the player slots are invalid");
 			return nullptr;
 		}
 
@@ -505,18 +521,27 @@ namespace detection
 		auto *victim = g_pCS2ACPlayerManager->ToPlayer(CPlayerSlot(victimSlot));
 		if (!IsEligibleHuman(attacker) || !victim || attacker == victim)
 		{
+			++bulletHitsUnmatched;
+			debugTotals("rejected because the players are unavailable or ineligible");
 			return nullptr;
 		}
 
-		ShotRecord *shot = MatchEvent(attacker, {}, currentTick, victim->index);
+		int compatibleMatches = 0;
+		ShotRecord *shot = MatchEvent(attacker, {}, currentTick, victim->index, &compatibleMatches);
 		if (!shot)
 		{
-			if (cs2ac_aimbot_debug.GetBool())
+			if (compatibleMatches > 1)
 			{
-				Msg("[CS2AC Aimbot] PlayerBulletHit rejected for slots %d -> %d: no unique compatible shot.\n", attackerSlot, victimSlot);
+				++bulletHitsAmbiguous;
 			}
+			else
+			{
+				++bulletHitsUnmatched;
+			}
+			debugTotals(compatibleMatches > 1 ? "rejected because multiple compatible shots exist" : "rejected because no compatible shot exists");
 			return nullptr;
 		}
+		++bulletHitsMatched;
 		shot->victimIndex = victim->index;
 		shot->headshot = shot->headshot || (event.has_hit_group() && event.hit_group() == HITGROUP_HEAD);
 		shot->wallbang = shot->wallbang || (event.has_penetration_count() && event.penetration_count() > 0);
@@ -526,11 +551,16 @@ namespace detection
 			Msg("[CS2AC Aimbot] PlayerBulletHit matched command %d: headshot=%d wallbang=%d through_smoke=%d.\n", shot->commandNumber, shot->headshot,
 				shot->wallbang, shot->throughSmoke);
 		}
+		debugTotals("matched");
 		return shot;
 	}
 
-	ShotRecord *ShotCorrelator::MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex)
+	ShotRecord *ShotCorrelator::MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex, int *compatibleMatches)
 	{
+		if (compatibleMatches)
+		{
+			*compatibleMatches = 0;
+		}
 		if (!IsEligibleHuman(player))
 		{
 			return nullptr;
@@ -550,6 +580,10 @@ namespace detection
 			}
 			match = &shot;
 			++matches;
+		}
+		if (compatibleMatches)
+		{
+			*compatibleMatches = matches;
 		}
 		return matches == 1 ? match : nullptr;
 	}

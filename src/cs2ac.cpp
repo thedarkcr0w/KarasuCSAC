@@ -404,6 +404,10 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	{
 		missing.emplace_back("The exact weapon firing data used by Silentaim is unavailable.");
 	}
+	if (g_pNetworkMessages && !g_pNetworkMessages->FindNetworkMessageById(GE_PlayerBulletHitId))
+	{
+		missing.emplace_back("The exact bullet-hit context used by Aimbot is unavailable.");
+	}
 	if (g_pCVar)
 	{
 		movement_settings::Validate(missing);

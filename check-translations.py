@@ -23,6 +23,11 @@ technical_compact_keys = {
     "evidence.antiaim.category_entry",
     "webhook.field.steamid64",
 }
+aimbot_score_keys = {
+    "evidence.aimbot.latest.snap_return",
+    "evidence.aimbot.latest.convergence",
+    "evidence.aimbot.latest.smooth",
+}
 
 
 def load(path: Path) -> dict[str, str]:
@@ -50,6 +55,9 @@ if files != languages:
     raise ValueError(f"language files differ: missing={languages - files}, extra={files - languages}")
 
 english = load(root / "en.txt")
+for key in aimbot_score_keys:
+    if "score" not in placeholders(english[key]) or "incidents" in placeholders(english[key]):
+        raise ValueError(f"{key} must expose the weighted score, not an incident count")
 source = "\n".join(path.read_text(encoding="utf-8") for path in root.parent.joinpath("src").rglob("*.cpp"))
 source_keys = set(re.findall(r'"((?:announcement|evidence|webhook)\.[A-Za-z0-9_.]+)"', source))
 source_keys.discard("webhook.h")

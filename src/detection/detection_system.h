@@ -195,12 +195,16 @@ namespace detection
 		std::deque<ShotRecord> &GetShots(int playerIndex);
 
 	private:
-		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex = -1);
+		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex = -1,
+							   int *compatibleMatches = nullptr);
 		static void AdvanceGeneration(ShotPlayerData &data);
 
 		std::array<ShotPlayerData, MAXPLAYERS + 1> playerData;
 		std::deque<PositionFrame> positionFrames;
 		std::uint64_t nextShotId {1};
+		std::uint64_t bulletHitsMatched {};
+		std::uint64_t bulletHitsUnmatched {};
+		std::uint64_t bulletHitsAmbiguous {};
 	};
 
 	struct DoubletapState

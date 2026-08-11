@@ -56,6 +56,7 @@ namespace
 	}
 
 	static_assert(AimbotPoints(false, false, false, false, false) * 3 == detectionThreshold);
+	static_assert(AimbotPoints(false, false, false, false, false) * 2 < detectionThreshold);
 	static_assert(AimbotPoints(true, true, true, true, false) == detectionThreshold);
 	static_assert(AimbotPoints(true, true, true, true, true) == 7);
 
@@ -628,21 +629,25 @@ namespace detection
 			};
 			auto addWeights = [](localization::Text text, const AimbotIncident &incident)
 			{
-				std::string weights = tfm::format("aimbot +%d", baseIncidentPoints);
-				auto add = [&](bool present, const char *name)
+				const auto base = localization::Format("evidence.aimbot.weight.base", "suspicious aim");
+				std::string englishWeights = tfm::format("%s +%d", base.english.c_str(), baseIncidentPoints);
+				std::string localizedWeights = tfm::format("%s +%d", base.localized.c_str(), baseIncidentPoints);
+				auto add = [&](bool present, const char *key, const char *english)
 				{
 					if (present)
 					{
-						weights += tfm::format(", %s +1", name);
+						const auto label = localization::Format(key, english);
+						englishWeights += tfm::format(", %s +1", label.english.c_str());
+						localizedWeights += tfm::format(", %s +1", label.localized.c_str());
 					}
 				};
-				add(incident.airborne, "airborne");
-				add(incident.wallbang, "wallbang");
-				add(incident.throughSmoke, "through smoke");
-				add(incident.headshot, "headshot");
-				add(incident.noscope, "no-scope");
-				const std::string suffix = tfm::format(" [%s = +%d]", weights.c_str(), incident.points);
-				return localization::Text {text.english + suffix, text.localized + suffix};
+				add(incident.airborne, "evidence.aimbot.weight.airborne", "airborne");
+				add(incident.wallbang, "evidence.aimbot.weight.wallbang", "wallbang");
+				add(incident.throughSmoke, "evidence.aimbot.weight.smoke", "through smoke");
+				add(incident.headshot, "evidence.aimbot.weight.headshot", "headshot");
+				add(incident.noscope, "evidence.aimbot.weight.noscope", "no-scope");
+				return localization::Text {text.english + tfm::format(" [%s = +%d]", englishWeights.c_str(), incident.points),
+										   text.localized + tfm::format(" [%s = +%d]", localizedWeights.c_str(), incident.points)};
 			};
 
 			std::vector<localization::Text> history;
@@ -650,7 +655,7 @@ namespace detection
 			{
 				history.push_back(addWeights(describe(incidents[index]), incidents[index]));
 			}
-			const auto values = localization::Arguments {{"incidents", tfm::format("%d", score)},
+			const auto values = localization::Arguments {{"score", tfm::format("%d", score)},
 														 {"threshold", tfm::format("%d", detectionThreshold)},
 														 {"snap", tfm::format("%.2f", added.movement)},
 														 {"before", tfm::format("%.2f", added.before)},
@@ -659,18 +664,18 @@ namespace detection
 				added.type == AimbotEvidenceType::SnapReturn
 					? localization::Format("evidence.aimbot.latest.snap_return",
 										   "During the latest damaging shot, the aim jumped {snap} degrees and immediately returned. Score: "
-										   "{incidents}/{threshold} within five minutes.",
+										   "{score}/{threshold} within five minutes.",
 										   values)
 				: added.type == AimbotEvidenceType::SmoothConvergence
 					? localization::Format(
 						  "evidence.aimbot.latest.smooth",
 						  "During the latest damaging shot, the aim followed an unusually clean {snap} degree curve and its distance "
-						  "from the enemy fell from {before} to {after} degrees. Score: {incidents}/{threshold} within five minutes.",
+						  "from the enemy fell from {before} to {after} degrees. Score: {score}/{threshold} within five minutes.",
 						  values)
 					: localization::Format(
 						  "evidence.aimbot.latest.convergence",
 						  "During the latest damaging shot, the aim moved {snap} degrees in one step and its distance from the enemy "
-						  "fell from {before} to {after} degrees. Score: {incidents}/{threshold} within five minutes.",
+						  "fell from {before} to {after} degrees. Score: {score}/{threshold} within five minutes.",
 						  values);
 			latest = addWeights(std::move(latest), added);
 			announce("AIMBOT", attacker, FormatEvidenceHistory(history, latest));
