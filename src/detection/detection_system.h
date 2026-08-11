@@ -16,6 +16,7 @@ class IGameEvent;
 class MovementPlayer;
 class PlayerCommand;
 class CMsgTEFireBullets;
+class CMsgPlayerBulletHit;
 
 namespace detection
 {
@@ -184,15 +185,17 @@ namespace detection
 
 		ShotRecord *OnWeaponFire(IGameEvent *event, MovementPlayer *player, int currentTick);
 		ShotRecord *OnFireBullets(const CMsgTEFireBullets &event, int currentTick);
+		ShotRecord *OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick);
 		ShotRecord *OnPlayerHurt(IGameEvent *event, MovementPlayer *victim, int currentTick);
 		ShotRecord *OnPlayerDeath(IGameEvent *event, MovementPlayer *victim, int currentTick);
 
 		const PositionFrame *FindFrame(int serverTick) const;
 		const TrackedPosition *FindPosition(int serverTick, int playerIndex) const;
+		const ShotRecord *FindShot(int playerIndex, std::uint64_t shotId) const;
 		std::deque<ShotRecord> &GetShots(int playerIndex);
 
 	private:
-		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick);
+		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex = -1);
 		static void AdvanceGeneration(ShotPlayerData &data);
 
 		std::array<ShotPlayerData, MAXPLAYERS + 1> playerData;
@@ -336,6 +339,7 @@ namespace detection
 	{
 		std::deque<AimCommand> commands;
 		int pendingShot {-1};
+		std::uint64_t pendingShotId {};
 		int victimIndex {-1};
 		int lastCountedIncidentCommand {};
 		bool pending {};
@@ -353,9 +357,22 @@ namespace detection
 	{
 		Clock::time_point time;
 		AimbotEvidenceType type {};
+		int points {};
 		float movement {};
 		float before {};
 		float after {};
+		bool airborne {};
+		bool wallbang {};
+		bool throughSmoke {};
+		bool headshot {};
+		bool noscope {};
+	};
+
+	struct PendingAimbotIncident
+	{
+		std::uint64_t shotId {};
+		int fireTick {-1};
+		AimbotIncident incident;
 	};
 
 	// Detects damaging command-angle snaps that rapidly converge on an enemy.
@@ -373,10 +390,13 @@ namespace detection
 
 	private:
 		bool Evaluate(MovementPlayer *attacker, AimbotPlayerData &data, int currentTick);
+		void FinalizePending(MovementPlayer *attacker, int currentTick);
+		void AddIncident(MovementPlayer *attacker, const PendingAimbotIncident &pending);
 
 		AnnounceCallback announce {};
 		ShotCorrelator *shots {};
 		std::array<AimbotPlayerData, MAXPLAYERS + 1> playerData;
+		std::array<std::deque<PendingAimbotIncident>, MAXPLAYERS + 1> pendingEvidence;
 		std::array<std::deque<AimbotIncident>, MAXPLAYERS + 1> evidence;
 	};
 
@@ -651,6 +671,7 @@ namespace detection
 		void OnGameFrame(int currentTick);
 		void OnGameEvent(IGameEvent *event, MovementPlayer *player, int currentTick);
 		void OnFireBullets(const CMsgTEFireBullets &event, int currentTick);
+		void OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick);
 		void OnClientReady(MovementPlayer *player);
 		void OnClientSettingsChanged(MovementPlayer *player);
 		void OnClientDisconnect(MovementPlayer *player);

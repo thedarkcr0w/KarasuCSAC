@@ -25,7 +25,9 @@ namespace
 	constexpr size_t commandHistorySize = 128;
 	constexpr int snapWindowTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr float minimumDistance = 100.0f;
-	constexpr int detectionThreshold = 3;
+	constexpr int baseIncidentPoints = 2;
+	constexpr int detectionThreshold = 6;
+	constexpr int contextWaitTicks = 2;
 	constexpr auto evidenceWindow = std::chrono::minutes(5);
 	// A confirmed smoothed-aimbot demo produced 12 damaging curves inside this envelope: 13.66-29.69 degrees of travel,
 	// 94.9-99.5% error removal, 0.12-0.85 degrees of final error, 94.6-100% path efficiency, and 3-5 shrinking steps.
@@ -46,6 +48,22 @@ namespace
 
 	static_assert(MeetsSmoothThresholds(13.66f, 0.949f, 0.85f, 0.946f, 3, true));
 	static_assert(!MeetsSmoothThresholds(6.31f, 0.934f, 0.41f, 1.0f, 3, true));
+
+	constexpr int AimbotPoints(bool airborne, bool wallbang, bool throughSmoke, bool headshot, bool noscope)
+	{
+		return baseIncidentPoints + static_cast<int>(airborne) + static_cast<int>(wallbang) + static_cast<int>(throughSmoke)
+			   + static_cast<int>(headshot) + static_cast<int>(noscope);
+	}
+
+	static_assert(AimbotPoints(false, false, false, false, false) * 3 == detectionThreshold);
+	static_assert(AimbotPoints(true, true, true, true, false) == detectionThreshold);
+	static_assert(AimbotPoints(true, true, true, true, true) == 7);
+
+	bool IsScopedRifle(std::string_view weapon)
+	{
+		weapon = detection::NormalizeWeapon(weapon);
+		return weapon == "awp" || weapon == "ssg08" || weapon == "g3sg1" || weapon == "scar20";
+	}
 
 	enum class AimbotRule
 	{
@@ -96,6 +114,7 @@ namespace detection
 	void AimbotModule::Reset()
 	{
 		playerData = {};
+		pendingEvidence = {};
 		evidence = {};
 	}
 
@@ -177,7 +196,7 @@ namespace detection
 	{
 		for (int index = 1; index <= MAXPLAYERS; ++index)
 		{
-			if (!playerData[index].pending)
+			if (!playerData[index].pending && pendingEvidence[index].empty())
 			{
 				continue;
 			}
@@ -185,9 +204,14 @@ namespace detection
 			if (!IsEligibleHuman(player))
 			{
 				playerData[index] = {};
+				pendingEvidence[index].clear();
 				continue;
 			}
-			Evaluate(player, playerData[index], currentTick);
+			if (playerData[index].pending)
+			{
+				Evaluate(player, playerData[index], currentTick);
+			}
+			FinalizePending(player, currentTick);
 		}
 	}
 
@@ -208,6 +232,7 @@ namespace detection
 			}
 		}
 		data.pendingShot = shot.commandNumber;
+		data.pendingShotId = shot.id;
 		data.victimIndex = victim->index;
 		data.pending = true;
 		AIMBOT_DEBUG("%s matched damaging shot command %d at server tick %d.\n", attacker->GetName(), shot.commandNumber, shot.serverTick);
@@ -223,6 +248,7 @@ namespace detection
 		auto clearPending = [&]()
 		{
 			data.pendingShot = -1;
+			data.pendingShotId = 0;
 			data.victimIndex = -1;
 			data.pending = false;
 		};
@@ -463,6 +489,7 @@ namespace detection
 		}
 
 		const int incidentCommand = shot->commandNumber;
+		const std::uint64_t incidentShotId = data.pendingShotId;
 		clearPending();
 		if (!suspicious)
 		{
@@ -502,91 +529,153 @@ namespace detection
 
 		data.lastCountedIncidentCommand = incidentCommand;
 		data.hasCountedIncident = true;
-		const auto now = Clock::now();
-		auto purge = [&](std::deque<AimbotIncident> &incidents)
-		{
-			while (!incidents.empty() && now - incidents.front().time >= evidenceWindow)
-			{
-				incidents.pop_front();
-			}
-		};
-		auto &incidents = evidence[attacker->index];
-		purge(incidents);
 		const AimbotEvidenceType evidenceType = matchedRule == AimbotRule::SnapReturn          ? AimbotEvidenceType::SnapReturn
 												: matchedRule == AimbotRule::SmoothConvergence ? AimbotEvidenceType::SmoothConvergence
 																							   : AimbotEvidenceType::Convergence;
-		incidents.push_back({now, evidenceType, largestSnap, bestBefore, bestAfter});
-		if (matchedRule == AimbotRule::SmoothConvergence)
+		PendingAimbotIncident pending;
+		pending.shotId = incidentShotId;
+		pending.fireTick = shot->serverTick;
+		pending.incident.time = Clock::now();
+		pending.incident.type = evidenceType;
+		pending.incident.movement = largestSnap;
+		pending.incident.before = bestBefore;
+		pending.incident.after = bestAfter;
+		if (const ShotRecord *record = shots->FindShot(attacker->index, incidentShotId))
 		{
-			AIMBOT_DEBUG("%s counted smooth convergence %.2f, target error %.2f -> %.2f, path %.1f%%, steps %d, evidence %d/%d.\n",
-						 attacker->GetName(), smoothMovement, smoothBefore, smoothAfter, smoothEfficiency * 100.0f, smoothSteps,
-						 static_cast<int>(incidents.size()), detectionThreshold);
+			pending.fireTick = record->fireTick;
+			pending.incident.airborne = record->airborne;
+			pending.incident.wallbang = record->wallbang;
+			pending.incident.throughSmoke = record->throughSmoke;
+			pending.incident.headshot = record->headshot;
+			pending.incident.noscope = !record->scoped && IsScopedRifle(record->weapon);
 		}
-		else if (matchedRule == AimbotRule::SnapReturn)
-		{
-			AIMBOT_DEBUG("%s counted snap-return %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, static_cast<int>(incidents.size()),
-						 detectionThreshold);
-		}
-		else
-		{
-			AIMBOT_DEBUG("%s counted convergence %.2f, target error %.2f -> %.2f, evidence %d/%d.\n", attacker->GetName(), largestSnap, bestBefore,
-						 bestAfter, static_cast<int>(incidents.size()), detectionThreshold);
-		}
-		if (incidents.size() >= static_cast<size_t>(detectionThreshold))
-		{
-			if (announce)
-			{
-				std::vector<localization::Text> history;
-				for (size_t index = 0; index + 1 < incidents.size(); ++index)
-				{
-					const auto &incident = incidents[index];
-					switch (incident.type)
-					{
-						case AimbotEvidenceType::SnapReturn:
-							history.push_back(localization::Format("evidence.aimbot.snap_return", "{movement}° snap-return",
-																   {{"movement", tfm::format("%.2f", incident.movement)}}));
-							break;
-						case AimbotEvidenceType::SmoothConvergence:
-							history.push_back(localization::Format("evidence.aimbot.smooth", "{movement}° smooth move ({before}°→{after}°)",
-																   {{"movement", tfm::format("%.2f", incident.movement)},
-																	{"before", tfm::format("%.2f", incident.before)},
-																	{"after", tfm::format("%.2f", incident.after)}}));
-							break;
-						case AimbotEvidenceType::Convergence:
-							history.push_back(localization::Format("evidence.aimbot.convergence", "{movement}° sudden move ({before}°→{after}°)",
-																   {{"movement", tfm::format("%.2f", incident.movement)},
-																	{"before", tfm::format("%.2f", incident.before)},
-																	{"after", tfm::format("%.2f", incident.after)}}));
-							break;
-					}
-				}
-				const auto values = localization::Arguments {{"incidents", tfm::format("%zu", incidents.size())},
-															 {"threshold", tfm::format("%d", detectionThreshold)},
-															 {"snap", tfm::format("%.2f", largestSnap)},
-															 {"before", tfm::format("%.2f", bestBefore)},
-															 {"after", tfm::format("%.2f", bestAfter)}};
-				const localization::Text latest =
-					matchedRule == AimbotRule::SnapReturn
-						? localization::Format("evidence.aimbot.latest.snap_return",
-											   "During the latest damaging shot, the aim jumped {snap} degrees and immediately returned. Evidence: "
-											   "{incidents}/{threshold} within five minutes.",
-											   values)
-					: matchedRule == AimbotRule::SmoothConvergence
-						? localization::Format(
-							  "evidence.aimbot.latest.smooth",
-							  "During the latest damaging shot, the aim followed an unusually clean {snap} degree curve and its distance "
-							  "from the enemy fell from {before} to {after} degrees. Evidence: {incidents}/{threshold} within five minutes.",
-							  values)
-						: localization::Format(
-							  "evidence.aimbot.latest.convergence",
-							  "During the latest damaging shot, the aim moved {snap} degrees in one step and its distance from the enemy "
-							  "fell from {before} to {after} degrees. Evidence: {incidents}/{threshold} within five minutes.",
-							  values);
-				announce("AIMBOT", attacker, FormatEvidenceHistory(history, latest));
-			}
-			incidents.clear();
-		}
+		pendingEvidence[attacker->index].push_back(std::move(pending));
+		AIMBOT_DEBUG("%s qualified command %d for contextual scoring.\n", attacker->GetName(), incidentCommand);
 		return true;
+	}
+
+	void AimbotModule::FinalizePending(MovementPlayer *attacker, int currentTick)
+	{
+		auto &pending = pendingEvidence[attacker->index];
+		for (auto incident = pending.begin(); incident != pending.end();)
+		{
+			const std::int64_t age = static_cast<std::int64_t>(currentTick) - incident->fireTick;
+			if (incident->fireTick >= 0 && age < contextWaitTicks)
+			{
+				++incident;
+				continue;
+			}
+
+			if (const ShotRecord *record = shots->FindShot(attacker->index, incident->shotId))
+			{
+				incident->incident.airborne = incident->incident.airborne || record->airborne;
+				incident->incident.wallbang = incident->incident.wallbang || record->wallbang;
+				incident->incident.throughSmoke = incident->incident.throughSmoke || record->throughSmoke;
+				incident->incident.headshot = incident->incident.headshot || record->headshot;
+				incident->incident.noscope = incident->incident.noscope || (!record->scoped && IsScopedRifle(record->weapon));
+			}
+			AddIncident(attacker, *incident);
+			incident = pending.erase(incident);
+		}
+	}
+
+	void AimbotModule::AddIncident(MovementPlayer *attacker, const PendingAimbotIncident &pending)
+	{
+		AimbotIncident added = pending.incident;
+		added.points = AimbotPoints(added.airborne, added.wallbang, added.throughSmoke, added.headshot, added.noscope);
+
+		const auto now = Clock::now();
+		auto &incidents = evidence[attacker->index];
+		while (!incidents.empty() && now - incidents.front().time >= evidenceWindow)
+		{
+			incidents.pop_front();
+		}
+		incidents.push_back(added);
+		const int score =
+			std::accumulate(incidents.begin(), incidents.end(), 0, [](int total, const AimbotIncident &incident) { return total + incident.points; });
+
+		const char *type = added.type == AimbotEvidenceType::SnapReturn          ? "snap-return"
+						   : added.type == AimbotEvidenceType::SmoothConvergence ? "smooth convergence"
+																				 : "convergence";
+		AIMBOT_DEBUG("%s counted %s %.2f for +%d points; score %d/%d.\n", attacker->GetName(), type, added.movement, added.points, score,
+					 detectionThreshold);
+		if (score < detectionThreshold)
+		{
+			return;
+		}
+
+		if (announce)
+		{
+			auto describe = [](const AimbotIncident &incident) -> localization::Text
+			{
+				switch (incident.type)
+				{
+					case AimbotEvidenceType::SnapReturn:
+						return localization::Format("evidence.aimbot.snap_return", "{movement}° snap-return",
+													{{"movement", tfm::format("%.2f", incident.movement)}});
+					case AimbotEvidenceType::SmoothConvergence:
+						return localization::Format("evidence.aimbot.smooth", "{movement}° smooth move ({before}°→{after}°)",
+													{{"movement", tfm::format("%.2f", incident.movement)},
+													 {"before", tfm::format("%.2f", incident.before)},
+													 {"after", tfm::format("%.2f", incident.after)}});
+					case AimbotEvidenceType::Convergence:
+						return localization::Format("evidence.aimbot.convergence", "{movement}° sudden move ({before}°→{after}°)",
+													{{"movement", tfm::format("%.2f", incident.movement)},
+													 {"before", tfm::format("%.2f", incident.before)},
+													 {"after", tfm::format("%.2f", incident.after)}});
+				}
+				return {};
+			};
+			auto addWeights = [](localization::Text text, const AimbotIncident &incident)
+			{
+				std::string weights = tfm::format("aimbot +%d", baseIncidentPoints);
+				auto add = [&](bool present, const char *name)
+				{
+					if (present)
+					{
+						weights += tfm::format(", %s +1", name);
+					}
+				};
+				add(incident.airborne, "airborne");
+				add(incident.wallbang, "wallbang");
+				add(incident.throughSmoke, "through smoke");
+				add(incident.headshot, "headshot");
+				add(incident.noscope, "no-scope");
+				const std::string suffix = tfm::format(" [%s = +%d]", weights.c_str(), incident.points);
+				return localization::Text {text.english + suffix, text.localized + suffix};
+			};
+
+			std::vector<localization::Text> history;
+			for (size_t index = 0; index + 1 < incidents.size(); ++index)
+			{
+				history.push_back(addWeights(describe(incidents[index]), incidents[index]));
+			}
+			const auto values = localization::Arguments {{"incidents", tfm::format("%d", score)},
+														 {"threshold", tfm::format("%d", detectionThreshold)},
+														 {"snap", tfm::format("%.2f", added.movement)},
+														 {"before", tfm::format("%.2f", added.before)},
+														 {"after", tfm::format("%.2f", added.after)}};
+			localization::Text latest =
+				added.type == AimbotEvidenceType::SnapReturn
+					? localization::Format("evidence.aimbot.latest.snap_return",
+										   "During the latest damaging shot, the aim jumped {snap} degrees and immediately returned. Score: "
+										   "{incidents}/{threshold} within five minutes.",
+										   values)
+				: added.type == AimbotEvidenceType::SmoothConvergence
+					? localization::Format(
+						  "evidence.aimbot.latest.smooth",
+						  "During the latest damaging shot, the aim followed an unusually clean {snap} degree curve and its distance "
+						  "from the enemy fell from {before} to {after} degrees. Score: {incidents}/{threshold} within five minutes.",
+						  values)
+					: localization::Format(
+						  "evidence.aimbot.latest.convergence",
+						  "During the latest damaging shot, the aim moved {snap} degrees in one step and its distance from the enemy "
+						  "fell from {before} to {after} degrees. Score: {incidents}/{threshold} within five minutes.",
+						  values);
+			latest = addWeights(std::move(latest), added);
+			announce("AIMBOT", attacker, FormatEvidenceHistory(history, latest));
+		}
+		incidents.clear();
 	}
 
 	void AimbotModule::OnClientDisconnect(MovementPlayer *player)
@@ -594,6 +683,7 @@ namespace detection
 		if (player && player->index >= 1 && player->index <= MAXPLAYERS)
 		{
 			playerData[player->index] = {};
+			pendingEvidence[player->index].clear();
 			evidence[player->index].clear();
 		}
 	}

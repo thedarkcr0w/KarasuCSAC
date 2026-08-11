@@ -631,6 +631,12 @@ void CS2ACPlugin::OnFireBullets(const CMsgTEFireBullets &event)
 	detectionSystem.OnFireBullets(event, globals ? globals->tickcount : 0);
 }
 
+void CS2ACPlugin::OnPlayerBulletHit(const CMsgPlayerBulletHit &event)
+{
+	auto *globals = g_pCS2ACUtils->GetServerGlobals();
+	detectionSystem.OnPlayerBulletHit(event, globals ? globals->tickcount : 0);
+}
+
 void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly,
 								  bool networkVetoed)
 {
@@ -1054,8 +1060,8 @@ void CS2ACPlugin::PrintStatus() const
 		settings::GetKickCommand() && *settings::GetKickCommand() ? "configured" : "disabled");
 	const size_t webhookQueueSize = webhook ? webhook->QueueSize() : 0;
 	Msg("[CS2AC] Discord webhook: %s, %zu queued report%s.\n",
-		webhook && webhook->IsDiscordConfigured() ? (webhook->IsDiscordDisabled() ? "disabled after an error" : "configured") : "not configured", webhookQueueSize,
-		webhookQueueSize == 1 ? "" : "s");
+		webhook && webhook->IsDiscordConfigured() ? (webhook->IsDiscordDisabled() ? "disabled after an error" : "configured") : "not configured",
+		webhookQueueSize, webhookQueueSize == 1 ? "" : "s");
 	Msg("[CS2AC] JSON webhook: %s.\n",
 		webhook && webhook->IsJsonConfigured() ? (webhook->IsJsonDisabled() ? "disabled after an error" : "configured") : "not configured");
 	Msg("[CS2AC] sv_cheats testing: %s.\n", MovementDetectionService::IsSvCheatsTestingAllowed() ? "allowed" : "not allowed");

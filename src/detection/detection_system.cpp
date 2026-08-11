@@ -15,6 +15,7 @@
 #include <limits>
 
 CConVarRef<bool> mp_teammates_are_enemies("mp_teammates_are_enemies");
+extern CConVar<bool> cs2ac_aimbot_debug;
 extern CConVar<bool> cs2ac_silentaim_debug;
 
 namespace
@@ -487,7 +488,48 @@ namespace detection
 		return match;
 	}
 
-	ShotRecord *ShotCorrelator::MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick)
+	ShotRecord *ShotCorrelator::OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick)
+	{
+		if (!event.has_attacker_slot() || !event.has_victim_slot() || !g_pCS2ACPlayerManager)
+		{
+			return nullptr;
+		}
+		const int attackerSlot = event.attacker_slot();
+		const int victimSlot = event.victim_slot();
+		if (attackerSlot < 0 || attackerSlot >= MAXPLAYERS || victimSlot < 0 || victimSlot >= MAXPLAYERS || attackerSlot == victimSlot)
+		{
+			return nullptr;
+		}
+
+		auto *attacker = g_pCS2ACPlayerManager->ToPlayer(CPlayerSlot(attackerSlot));
+		auto *victim = g_pCS2ACPlayerManager->ToPlayer(CPlayerSlot(victimSlot));
+		if (!IsEligibleHuman(attacker) || !victim || attacker == victim)
+		{
+			return nullptr;
+		}
+
+		ShotRecord *shot = MatchEvent(attacker, {}, currentTick, victim->index);
+		if (!shot)
+		{
+			if (cs2ac_aimbot_debug.GetBool())
+			{
+				Msg("[CS2AC Aimbot] PlayerBulletHit rejected for slots %d -> %d: no unique compatible shot.\n", attackerSlot, victimSlot);
+			}
+			return nullptr;
+		}
+		shot->victimIndex = victim->index;
+		shot->headshot = shot->headshot || (event.has_hit_group() && event.hit_group() == HITGROUP_HEAD);
+		shot->wallbang = shot->wallbang || (event.has_penetration_count() && event.penetration_count() > 0);
+		shot->throughSmoke = shot->throughSmoke || (event.has_through_smoke() && event.through_smoke());
+		if (cs2ac_aimbot_debug.GetBool())
+		{
+			Msg("[CS2AC Aimbot] PlayerBulletHit matched command %d: headshot=%d wallbang=%d through_smoke=%d.\n", shot->commandNumber, shot->headshot,
+				shot->wallbang, shot->throughSmoke);
+		}
+		return shot;
+	}
+
+	ShotRecord *ShotCorrelator::MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex)
 	{
 		if (!IsEligibleHuman(player))
 		{
@@ -501,7 +543,8 @@ namespace detection
 		{
 			const std::int64_t delta = static_cast<std::int64_t>(currentTick) - shot.fireTick;
 			if (shot.generation != data.generation || delta < 0 || delta > shotMatchTicks
-				|| (!weapon.empty() && NormalizeWeapon(shot.weapon) != weapon))
+				|| (!weapon.empty() && NormalizeWeapon(shot.weapon) != weapon)
+				|| (victimIndex > 0 && shot.victimIndex > 0 && shot.victimIndex != victimIndex))
 			{
 				continue;
 			}
@@ -526,7 +569,7 @@ namespace detection
 		{
 			return nullptr;
 		}
-		ShotRecord *shot = MatchEvent(attacker, {}, currentTick);
+		ShotRecord *shot = MatchEvent(attacker, {}, currentTick, victim->index);
 		if (!shot || shot->hurtSeen)
 		{
 			return nullptr;
@@ -534,7 +577,7 @@ namespace detection
 		shot->hurtSeen = true;
 		shot->silentHitSeen = true;
 		shot->victimIndex = victim->index;
-		shot->headshot = event->GetInt("hitgroup", HITGROUP_GENERIC) == HITGROUP_HEAD;
+		shot->headshot = shot->headshot || (event->GetInt("hitgroup", HITGROUP_GENERIC) == HITGROUP_HEAD);
 		return shot;
 	}
 
@@ -553,15 +596,15 @@ namespace detection
 		{
 			return nullptr;
 		}
-		ShotRecord *shot = MatchEvent(attacker, event->GetString("weapon", ""), currentTick);
+		ShotRecord *shot = MatchEvent(attacker, event->GetString("weapon", ""), currentTick, victim->index);
 		if (!shot || shot->deathSeen)
 		{
 			return nullptr;
 		}
 		shot->deathSeen = true;
 		shot->victimIndex = victim->index;
-		shot->wallbang = event->GetInt("penetrated", 0) > 0;
-		shot->throughSmoke = event->GetBool("thrusmoke", false);
+		shot->wallbang = shot->wallbang || (event->GetInt("penetrated", 0) > 0);
+		shot->throughSmoke = shot->throughSmoke || event->GetBool("thrusmoke", false);
 		return shot;
 	}
 
@@ -589,6 +632,17 @@ namespace detection
 			return nullptr;
 		}
 		return &frame->players[playerIndex];
+	}
+
+	const ShotRecord *ShotCorrelator::FindShot(int playerIndex, std::uint64_t shotId) const
+	{
+		if (playerIndex < 1 || playerIndex > MAXPLAYERS || shotId == 0)
+		{
+			return nullptr;
+		}
+		const auto &records = playerData[playerIndex].shots;
+		const auto found = std::find_if(records.begin(), records.end(), [&](const ShotRecord &shot) { return shot.id == shotId; });
+		return found == records.end() ? nullptr : &*found;
 	}
 
 	std::deque<ShotRecord> &ShotCorrelator::GetShots(int playerIndex)
@@ -842,6 +896,17 @@ namespace detection
 			auto *player = g_pCS2ACPlayerManager->ToPlayer(static_cast<u32>(shot->playerIndex));
 			silentAim.OnShotUpdated(player, *shot);
 		}
+	}
+
+	void DetectionSystem::OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick)
+	{
+		RefreshSettings();
+		if (!settings::IsPluginEnabled()
+			|| (!settings::IsDetectionEnabled(DetectionType::Aimbot) && !settings::IsDetectionEnabled(DetectionType::SilentAim)))
+		{
+			return;
+		}
+		shots.OnPlayerBulletHit(event, currentTick);
 	}
 
 	void DetectionSystem::OnClientReady(MovementPlayer *player)
