@@ -20,6 +20,7 @@ public:
 	bool IsConfigured() const;
 	bool IsDiscordConfigured() const;
 	bool IsJsonConfigured() const;
+
 	bool IsDiscordDisabled() const
 	{
 		return discordDisabled;

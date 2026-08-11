@@ -35,11 +35,11 @@ CConVar<bool> cs2ac_hyperscroll_debug("cs2ac_hyperscroll_debug", FCVAR_NONE,
 		HYPERSCROLL_DEBUG(__VA_ARGS__); \
 	} while (0)
 
-#define JUMP_PATTERN_WINDOW      0.25f
-#define MIN_AIR_TIME_FOR_BHOP    (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Minimum air time to consider a jump for bhop hack detection
-#define BHOP_IGNORE_DURATION     (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Ignore teleports/noclips in the last 4 ticks
-#define OLD_JUMP_PURGE_THRESHOLD (JUMP_PATTERN_WINDOW * ENGINE_FIXED_TICK_RATE) // Purge jump attempts older than 0.25s
-#define MIN_PATTERN_SAMPLE_COUNT     10 // Minimum completed patterns before repetitive-input detection
+#define JUMP_PATTERN_WINDOW          0.25f
+#define MIN_AIR_TIME_FOR_BHOP        (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Minimum air time to consider a jump for bhop hack detection
+#define BHOP_IGNORE_DURATION         (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Ignore teleports/noclips in the last 4 ticks
+#define OLD_JUMP_PURGE_THRESHOLD     (JUMP_PATTERN_WINDOW * ENGINE_FIXED_TICK_RATE) // Purge jump attempts older than 0.25s
+#define MIN_PATTERN_SAMPLE_COUNT     10                                             // Minimum completed patterns before repetitive-input detection
 #define MIN_HYPERSCROLL_SAMPLE_COUNT 20 // Minimum completed patterns and eligible landings before hyperscroll detection
 #define WINDOW_SIZE                  30 // Number of recent jumps to consider for bhop hack detection
 // Number of consecutive perfect bhops in the window to trigger a bhop hack infraction, regardless of ratio
@@ -174,8 +174,8 @@ void MovementDetectionService::CreateLandEvent()
 		this->player->GetMovementSetting(MOVEMENT_SETTING_SV_JUMP_SPAM_PENALTY_TIME)->m_fl32Value >= ENGINE_FIXED_TICK_INTERVAL;
 	this->bhopDirty = true;
 	JUMP_INPUT_DEBUG("%s accepted landing %zu at command %d: %.4f seconds in air, %u earlier jump presses, chain eligible: %s.\n",
-					 this->player->GetName(), this->recentLandingEvents.size(), event.cmdNum, completedAirTime,
-					 event.numJumpBefore, event.shouldCountTowardsPerfChains ? "yes" : "no");
+					 this->player->GetName(), this->recentLandingEvents.size(), event.cmdNum, completedAirTime, event.numJumpBefore,
+					 event.shouldCountTowardsPerfChains ? "yes" : "no");
 }
 
 void MovementDetectionService::OnChangeMoveType(MoveType_t oldMoveType)

@@ -121,7 +121,7 @@ namespace
 		CConVar<CUtlString> webhookUrl {"cs2ac_webhook_url", FCVAR_PROTECTED, "Discord webhook URL for detection reports", CUtlString("")};
 		CConVar<CUtlString> jsonWebhookUrl {"cs2ac_json_webhook_url", FCVAR_PROTECTED, "HTTPS endpoint for JSON detection reports", CUtlString("")};
 		CConVar<CUtlString> jsonWebhookBearerToken {"cs2ac_json_webhook_bearer_token", FCVAR_PROTECTED,
-			"Optional bearer token for JSON detection reports", CUtlString("")};
+													"Optional bearer token for JSON detection reports", CUtlString("")};
 		CConVar<CUtlString> webhookRoleId {"cs2ac_webhook_role_id", FCVAR_NONE, "Discord role ID mentioned in detection reports", CUtlString("")};
 		CConVar<CUtlString> webhookServerAddress {"cs2ac_webhook_server_address", FCVAR_NONE, "Public server address shown in Discord reports",
 												  CUtlString("")};

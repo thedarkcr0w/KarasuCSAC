@@ -458,8 +458,7 @@ void utils::AnnounceWatermarkTo(CPlayerSlot slot, bool centerOnly)
 			}
 		};
 		printChat(localization::Watermark({{"author", "{grey}%s1{default}"}}).localized, "karola3vax");
-		printChat(localization::Format("announcement.support", "Support development: {blue}{url}{default}",
-									   {{"url", "buymeacoffee.com/karola3vax"}})
+		printChat(localization::Format("announcement.support", "Support development: {blue}{url}{default}", {{"url", "buymeacoffee.com/karola3vax"}})
 					  .localized);
 		return;
 	}

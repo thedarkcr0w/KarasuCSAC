@@ -860,12 +860,9 @@ bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body, std::st
 	const fs::path packageBinary = packageRoot / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac") + binaryExtension);
 	// Keep this name dot-free because Metamod treats a dotted version suffix as the binary extension.
 	const fs::path updateBinary = CsgoRoot() / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac-update") + binaryExtension);
-	if (!requireFile(packageBinary)
-		|| !requireFile(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt")
-		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "translations")
-		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "licenses")
-		|| !requireFile(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md")
-		|| !requireFile(packageRoot / "cfg" / "cs2ac.cfg"))
+	if (!requireFile(packageBinary) || !requireFile(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt")
+		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "translations") || !requireDirectory(packageRoot / "addons" / "cs2ac" / "licenses")
+		|| !requireFile(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md") || !requireFile(packageRoot / "cfg" / "cs2ac.cfg"))
 	{
 		return false;
 	}

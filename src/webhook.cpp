@@ -381,7 +381,8 @@ void WebhookService::Report(const char *detection, MovementPlayer *player, std::
 	{
 		return;
 	}
-	auto enqueue = [this](ReportData report) {
+	auto enqueue = [this](ReportData report)
+	{
 		if (queue.size() >= maximumQueueSize)
 		{
 			queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
@@ -393,7 +394,8 @@ void WebhookService::Report(const char *detection, MovementPlayer *player, std::
 		}
 		queue.push_back(std::move(report));
 	};
-	auto makeReport = [&](ReportData::Delivery delivery) {
+	auto makeReport = [&](ReportData::Delivery delivery)
+	{
 		ReportData report;
 		report.delivery = delivery;
 		report.detection = detection;
@@ -434,7 +436,8 @@ void WebhookService::Test()
 		Msg("[CS2AC] All configured webhooks are disabled after an error. Fix them and run cs2ac_reload before testing again.\n");
 		return;
 	}
-	const auto enqueue = [this](ReportData::Delivery delivery) {
+	const auto enqueue = [this](ReportData::Delivery delivery)
+	{
 		if (queue.size() >= maximumQueueSize)
 		{
 			queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
@@ -509,13 +512,12 @@ void WebhookService::SendNext()
 		url += url.find('?') == std::string::npos ? "?wait=true" : "&wait=true";
 	}
 	request = http->CreateHTTPRequest(k_EHTTPMethodPOST, url.c_str());
-	const std::string authorization =
-		json && settings::GetJsonWebhookBearerToken() && *settings::GetJsonWebhookBearerToken()
-			? tfm::format("Bearer %s", settings::GetJsonWebhookBearerToken())
-			: "";
+	const std::string authorization = json && settings::GetJsonWebhookBearerToken() && *settings::GetJsonWebhookBearerToken()
+										  ? tfm::format("Bearer %s", settings::GetJsonWebhookBearerToken())
+										  : "";
 	if (request == INVALID_HTTPREQUEST_HANDLE
 		|| !http->SetHTTPRequestRawPostBody(request, "application/json", reinterpret_cast<uint8 *>(queue.front().payload.data()),
-										static_cast<uint32>(queue.front().payload.size()))
+											static_cast<uint32>(queue.front().payload.size()))
 		|| (!authorization.empty() && !http->SetHTTPRequestHeaderValue(request, "Authorization", authorization.c_str()))
 		|| !http->SetHTTPRequestNetworkActivityTimeout(request, 5) || !http->SetHTTPRequestAbsoluteTimeoutMS(request, 10000)
 		|| !http->SetHTTPRequestRequiresVerifiedCertificate(request, true)
@@ -691,7 +693,8 @@ void WebhookService::Disable(ReportData::Delivery delivery, const char *reason)
 	{
 		discordDisabled = true;
 	}
-	queue.erase(std::remove_if(queue.begin(), queue.end(), [delivery](const ReportData &report) { return report.delivery == delivery; }), queue.end());
+	queue.erase(std::remove_if(queue.begin(), queue.end(), [delivery](const ReportData &report) { return report.delivery == delivery; }),
+				queue.end());
 	Msg("[CS2AC] %s reports are disabled until the next cs2ac_reload. %s\n", DeliveryName(delivery), reason);
 }
 
@@ -781,19 +784,20 @@ std::string WebhookService::BuildJsonPayload(const ReportData &report)
 	const std::string map =
 		globals && globals->mapname.ToCStr() ? globals->mapname.ToCStr() : localization::Get("webhook.unavailable", "Unavailable");
 	const std::string server = ConVarString("hostname", localization::Get("webhook.default_server_name", "CS2 Server").c_str());
-	const std::string player = Limit(report.playerName.empty() ? localization::Get("webhook.unknown_player", "Unknown player") : report.playerName, 256);
+	const std::string player =
+		Limit(report.playerName.empty() ? localization::Get("webhook.unknown_player", "Unknown player") : report.playerName, 256);
 	const std::string detection = Limit(report.detection.empty() ? "UNKNOWN" : report.detection, 256);
 	const std::string evidence = Limit(
 		CompleteSentence(report.evidence.empty() ? localization::Get("webhook.default_evidence", "The detector reached its configured threshold")
-							: report.evidence),
+												 : report.evidence),
 		4096);
 	const std::string address = ServerAddress();
 	const std::string steamId = report.steamId ? tfm::format("%llu", static_cast<unsigned long long>(report.steamId)) : "";
 
-	return tfm::format(
-		"{\"type\":\"detection\",\"version\":1,\"steamid64\":\"%s\",\"player\":\"%s\",\"detection\":\"%s\","
-		"\"evidence\":\"%s\",\"outcome\":\"%s\",\"map\":\"%s\",\"server\":\"%s\",\"server_address\":\"%s\","
-		"\"timestamp\":\"%s\",\"plugin_version\":\"%s\"}",
-		JsonEscape(steamId), JsonEscape(player), JsonEscape(detection), JsonEscape(evidence), OutcomeCode(report.outcome), JsonEscape(Limit(map, 256)),
-		JsonEscape(Limit(server, 256)), JsonEscape(Limit(address, 512)), UtcTimestamp(), JsonEscape(PLUGIN_FULL_VERSION));
+	return tfm::format("{\"type\":\"detection\",\"version\":1,\"steamid64\":\"%s\",\"player\":\"%s\",\"detection\":\"%s\","
+					   "\"evidence\":\"%s\",\"outcome\":\"%s\",\"map\":\"%s\",\"server\":\"%s\",\"server_address\":\"%s\","
+					   "\"timestamp\":\"%s\",\"plugin_version\":\"%s\"}",
+					   JsonEscape(steamId), JsonEscape(player), JsonEscape(detection), JsonEscape(evidence), OutcomeCode(report.outcome),
+					   JsonEscape(Limit(map, 256)), JsonEscape(Limit(server, 256)), JsonEscape(Limit(address, 512)), UtcTimestamp(),
+					   JsonEscape(PLUGIN_FULL_VERSION));
 }
