@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° різкий рух ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° плавний рух ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° гуманізоване згладжування (коефіцієнт {gain}%, відповідність {fit}%)"
 	"evidence.aimlock"	"Протягом п’яти хвилин CS2AC виявив {incidents} окремі двосекундні періоди майже ідеального стеження за ворогом. Останнє: прицілювання залишалося в межах ширини тіла ворога протягом {precise} з {samples} перевірок, у той час як ворог переміщався на {movement} градусів у полі зору гравця; Для такої відстані було потрібно {required} градусів. Докази: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° незрозумілий кут - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"заземлений"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Під час останнього вражаючого пострілу приціль підскочив на градус {snap} і негайно повернувся. Оцінка: {score}/{threshold} протягом п’яти хвилин."
 	"evidence.aimbot.latest.convergence"	"Під час останнього вражаючого пострілу ціль перемістилася на {snap} градусів за один крок, а відстань від ворога зменшилася з {before} до {after} градусів. Оцінка: {score}/{threshold} протягом п’яти хвилин."
 	"evidence.aimbot.latest.smooth"	"Під час останнього ушкоджуючого пострілу приціл дотримувався надзвичайно чіткої градусної кривої {snap}, а його відстань від ворога зменшилася з {before} до {after} градусів. Оцінка: {score}/{threshold} протягом п’яти хвилин."
+	"evidence.aimbot.latest.humanized"	"Під час останнього пострілу з уроном шість послідовних корекцій прицілу дотримувалися сталого коефіцієнта згладжування {gain}% у напрямку ворога з пропорційною відповідністю {fit}%. Оцінка: {score}/{threshold} протягом п’яти хвилин."
 	"evidence.triggerbot.latest"	"Після нового контакту та {latest_ticks} інтервалів оновлення гри гравець завдав {damage} шкоди в область {hitgroup} цілі; {context}. Слот гравця цілі: {target}. Оцінка: {score}/{threshold} протягом п’яти хвилин."
 }

@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° plotselinge beweging ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° vloeiende beweging ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° gehumaniseerde afvlakking (factor {gain}%, passing {fit}%)"
 	"evidence.aimlock"	"Binnen vijf minuten vond CS2AC {incidents} afzonderlijke perioden van twee seconden waarin de vijand vrijwel perfect werd gevolgd. Laatste: het doel bleef binnen de lichaamsbreedte van de vijand voor {precise} of {samples} controles terwijl de vijand {movement} graden over het gezichtsveld van de speler bewoog; Op die afstand was {required} graden vereist. Bewijs: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° onverklaarbare hoek - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"gegrond"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Tijdens het laatste schadelijke schot steeg het doel {snap} graden en keerde onmiddellijk terug. Score: {score}/{threshold} binnen vijf minuten."
 	"evidence.aimbot.latest.convergence"	"Tijdens het laatste schadelijke schot verschoof het doel {snap} graden in één stap en daalde de afstand tot de vijand van {before} naar {after} graden. Score: {score}/{threshold} binnen vijf minuten."
 	"evidence.aimbot.latest.smooth"	"Tijdens het laatste schadelijke schot volgde het doel een ongewoon zuivere {snap} gradencurve en daalde de afstand tot de vijand van {before} naar {after} graden. Score: {score}/{threshold} binnen vijf minuten."
+	"evidence.aimbot.latest.humanized"	"Tijdens het laatste schadelijke schot volgden zes opeenvolgende richtcorrecties een constante afvlakkingsfactor van {gain}% naar de vijand met {fit}% proportionele passing. Score: {score}/{threshold} binnen vijf minuten."
 	"evidence.triggerbot.latest"	"De speler bracht het doel {damage} schade toe aan {hitgroup} na {latest_ticks} game-update-intervallen vanaf het nieuwe contact; {context}. Spelerslot van het doel: {target}. Score: {score}/{threshold} binnen vijf minuten."
 }

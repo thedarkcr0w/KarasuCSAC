@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° 급격한 움직임 ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° 부드러운 움직임 ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° 인간화 스무딩 (계수 {gain}%, 적합도 {fit}%)"
 	"evidence.aimlock"	"5분 이내에 CS2AC는 {incidents}가 2초 동안 거의 완벽에 가까운 적 추적을 수행한다는 사실을 발견했습니다. 최신: 조준은 {samples} 확인 중 {precise} 동안 적의 몸 너비 내부에 머물렀고 적이 플레이어의 시야를 가로질러 {movement}도 이동했습니다. 해당 거리에서는 {required}도가 필요했습니다. 증거: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° 설명할 수 없는 각도 - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"접지된"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"최근의 데미지 샷 중에 조준이 {snap}도를 뛰어넘었다가 즉시 돌아왔습니다. 5분 이내 점수: {score}/{threshold}."
 	"evidence.aimbot.latest.convergence"	"최근 피해 사격 중 조준은 한 단계에 {snap}도를 이동했으며 적과의 거리가 {before}에서 {after}도로 감소했습니다. 5분 이내 점수: {score}/{threshold}."
 	"evidence.aimbot.latest.smooth"	"최근 공격에서 조준은 비정상적으로 깔끔한 {snap} 각도 곡선을 따랐으며 적과의 거리가 {before}에서 {after} 각도로 감소했습니다. 5분 이내 점수: {score}/{threshold}."
+	"evidence.aimbot.latest.humanized"	"최근 피해를 준 사격에서 여섯 번의 연속 조준 보정이 적을 향해 일정한 {gain}% 스무딩 계수를 따랐고 비례 적합도는 {fit}%였습니다. 5분 이내 점수: {score}/{threshold}."
 	"evidence.triggerbot.latest"	"새로운 접촉 후 게임 업데이트 간격이 {latest_ticks}회 지난 시점에 플레이어가 대상의 {hitgroup}에 {damage} 피해를 입혔습니다. {context}. 대상 플레이어 슬롯: {target}. 5분 이내 점수: {score}/{threshold}."
 }

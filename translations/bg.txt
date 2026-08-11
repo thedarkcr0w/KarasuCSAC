@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° внезапно движение ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° плавно движение ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° хуманизирано изглаждане (коефициент {gain}%, съвпадение {fit}%)"
 	"evidence.aimlock"	"В рамките на пет минути CS2AC откри {incidents} отделни периоди от две секунди на почти перфектно проследяване на врага. Последно: прицелът остана в ширината на тялото на врага за {precise} от {samples} проверки, докато врагът се премести на {movement} градуса през изгледа на играча; На това разстояние се изискваха {required} градуса. Доказателство: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° необясним ъгъл - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"заземен"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"По време на последния увреждащ изстрел, мерникът прескочи {snap} градуса и веднага се върна. Резултат: {score}/{threshold} в рамките на пет минути."
 	"evidence.aimbot.latest.convergence"	"По време на последния увреждащ изстрел, целта премести {snap} градуса в една стъпка и разстоянието му от врага падна от {before} на {after} градуса. Резултат: {score}/{threshold} в рамките на пет минути."
 	"evidence.aimbot.latest.smooth"	"По време на последния увреждащ изстрел прицелът последва необичайно чиста градусна крива {snap} и разстоянието му от врага падна от {before} до {after} градуса. Резултат: {score}/{threshold} в рамките на пет минути."
+	"evidence.aimbot.latest.humanized"	"При последния увреждащ изстрел шест поредни корекции на прицела следваха постоянен коефициент на изглаждане {gain}% към врага с {fit}% пропорционално съвпадение. Резултат: {score}/{threshold} в рамките на пет минути."
 	"evidence.triggerbot.latest"	"Играчът нанесе {damage} щети в {hitgroup} на целта след {latest_ticks} интервала за актуализация на играта от новия контакт; {context}. Слот на целта: {target}. Резултат: {score}/{threshold} в рамките на пет минути."
 }

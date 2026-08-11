@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° gerakan mendadak ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° gerakan halus ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° penghalusan manusiawi (faktor {gain}%, kecocokan {fit}%)"
 	"evidence.aimlock"	"Dalam lima menit, CS2AC menemukan {incidents} memisahkan periode dua detik pelacakan musuh yang hampir sempurna. Terbaru: bidikannya tetap berada di dalam lebar tubuh musuh untuk pemeriksaan {precise} dari {samples} sementara musuh menggerakkan derajat {movement} melintasi pandangan pemain; {required} derajat diperlukan pada jarak tersebut. Bukti: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° sudut yang tidak dapat dijelaskan - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"membumi"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Selama tembakan merusak terakhir, bidikannya melonjak derajat {snap} dan segera kembali. Skor: {score}/{threshold} dalam waktu lima menit."
 	"evidence.aimbot.latest.convergence"	"Selama tembakan merusak terakhir, bidikannya berpindah {snap} derajat dalam satu langkah dan jaraknya dari musuh turun dari {before} menjadi {after} derajat. Skor: {score}/{threshold} dalam waktu lima menit."
 	"evidence.aimbot.latest.smooth"	"Selama tembakan merusak terbaru, sasarannya mengikuti kurva derajat {snap} yang sangat bersih dan jaraknya dari musuh turun dari {before} menjadi {after} derajat. Skor: {score}/{threshold} dalam waktu lima menit."
+	"evidence.aimbot.latest.humanized"	"Pada tembakan merusak terbaru, enam koreksi bidikan berturut-turut mengikuti faktor penghalusan {gain}% yang konsisten ke arah musuh dengan kecocokan proporsional {fit}%. Skor: {score}/{threshold} dalam lima menit."
 	"evidence.triggerbot.latest"	"Pemain memberikan {damage} kerusakan ke {hitgroup} target setelah {latest_ticks} interval pembaruan game sejak kontak baru; {context}. Slot pemain target: {target}. Skor: {score}/{threshold} dalam lima menit."
 }

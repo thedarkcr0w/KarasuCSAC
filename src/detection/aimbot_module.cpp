@@ -5,7 +5,9 @@
 #include "sdk/usercmd.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <limits>
 #include <numeric>
@@ -26,6 +28,7 @@ namespace
 	constexpr int snapWindowTicks = static_cast<int>(ENGINE_FIXED_TICK_RATE * 0.5f);
 	constexpr float minimumDistance = 100.0f;
 	constexpr int baseIncidentPoints = 2;
+	constexpr int humanizedBaseIncidentPoints = 1;
 	constexpr int detectionThreshold = 6;
 	constexpr int contextWaitTicks = 2;
 	constexpr auto evidenceWindow = std::chrono::minutes(5);
@@ -38,6 +41,18 @@ namespace
 	constexpr float smoothMinimumStep = 0.15f;
 	constexpr float smoothRelativeStep = 0.10f;
 	constexpr int smoothMinimumSteps = 3;
+	// A confirmed low-FOV aimbot repeatedly moved 10-40% of the remaining target error per update. Across six-update
+	// windows, 10/20 damaging shots followed that proportional controller with at least 70% fit and 80% alignment.
+	constexpr int humanizedSteps = 6;
+	constexpr int humanizedLagSearchRadius = 2;
+	constexpr float humanizedMinimumGain = 0.10f;
+	constexpr float humanizedMaximumGain = 0.40f;
+	constexpr float humanizedMinimumMovement = 0.70f;
+	constexpr float humanizedMinimumFit = 0.70f;
+	constexpr float humanizedMinimumAlignment = 0.80f;
+	constexpr int humanizedMinimumAlignedSteps = 5;
+	constexpr float humanizedGainTolerance = 0.08f;
+	constexpr float maximumInterpolationTicks = 19.0f;
 	constexpr float bodyHeights[] = {8.0f, 46.0f, 64.0f};
 
 	constexpr bool MeetsSmoothThresholds(float movement, float improvement, float finalError, float efficiency, int steps, bool shrinking)
@@ -49,16 +64,27 @@ namespace
 	static_assert(MeetsSmoothThresholds(13.66f, 0.949f, 0.85f, 0.946f, 3, true));
 	static_assert(!MeetsSmoothThresholds(6.31f, 0.934f, 0.41f, 1.0f, 3, true));
 
-	constexpr int AimbotPoints(bool airborne, bool wallbang, bool throughSmoke, bool headshot, bool noscope)
+	constexpr bool MeetsHumanizedThresholds(float gain, float movement, float fit, float alignment, int alignedSteps)
 	{
-		return baseIncidentPoints + static_cast<int>(airborne) + static_cast<int>(wallbang) + static_cast<int>(throughSmoke)
+		return gain >= humanizedMinimumGain && gain <= humanizedMaximumGain && movement >= humanizedMinimumMovement
+			   && fit >= humanizedMinimumFit && alignment >= humanizedMinimumAlignment && alignedSteps >= humanizedMinimumAlignedSteps;
+	}
+
+	static_assert(MeetsHumanizedThresholds(0.218f, 1.204f, 0.969f, 0.984f, 6));
+	static_assert(!MeetsHumanizedThresholds(0.218f, 0.50f, 0.969f, 0.984f, 6));
+	static_assert(!MeetsHumanizedThresholds(0.50f, 1.204f, 0.969f, 0.984f, 6));
+
+	constexpr int AimbotPoints(int basePoints, bool airborne, bool wallbang, bool throughSmoke, bool headshot, bool noscope)
+	{
+		return basePoints + static_cast<int>(airborne) + static_cast<int>(wallbang) + static_cast<int>(throughSmoke)
 			   + static_cast<int>(headshot) + static_cast<int>(noscope);
 	}
 
-	static_assert(AimbotPoints(false, false, false, false, false) * 3 == detectionThreshold);
-	static_assert(AimbotPoints(false, false, false, false, false) * 2 < detectionThreshold);
-	static_assert(AimbotPoints(true, true, true, true, false) == detectionThreshold);
-	static_assert(AimbotPoints(true, true, true, true, true) == 7);
+	static_assert(AimbotPoints(baseIncidentPoints, false, false, false, false, false) * 3 == detectionThreshold);
+	static_assert(AimbotPoints(baseIncidentPoints, false, false, false, false, false) * 2 < detectionThreshold);
+	static_assert(AimbotPoints(humanizedBaseIncidentPoints, false, false, false, true, false) * 3 == detectionThreshold);
+	static_assert(AimbotPoints(baseIncidentPoints, true, true, true, true, false) == detectionThreshold);
+	static_assert(AimbotPoints(baseIncidentPoints, true, true, true, true, true) == 7);
 
 	bool IsScopedRifle(std::string_view weapon)
 	{
@@ -72,6 +98,18 @@ namespace
 		Convergence,
 		SnapReturn,
 		SmoothConvergence,
+		Humanized,
+	};
+
+	struct HumanizedMeasurement
+	{
+		float gain {};
+		float movement {};
+		float fit {};
+		float alignment {};
+		int alignedSteps {};
+		int lagTicks {};
+		bool valid {};
 	};
 
 	float AimError(const Vector &eye, const QAngle &angles, const Vector &target)
@@ -94,6 +132,112 @@ namespace
 			best = (std::min)(best, AimError(eye, angles, feet + Vector(0.0f, 0.0f, height)));
 		}
 		return best;
+	}
+
+	QAngle Bearing(const Vector &eye, const Vector &target)
+	{
+		const Vector delta = target - eye;
+		constexpr float radiansToDegrees = static_cast<float>(180.0 / M_PI);
+		return {-std::atan2(delta.z, std::sqrt(delta.x * delta.x + delta.y * delta.y)) * radiansToDegrees,
+				std::atan2(delta.y, delta.x) * radiansToDegrees, 0.0f};
+	}
+
+	int EstimateVisualLagTicks(MovementPlayer *player)
+	{
+		if (!player || !interfaces::pEngine)
+		{
+			return -1;
+		}
+
+		INetChannelInfo *netChannel = interfaces::pEngine->GetPlayerNetInfo(player->GetPlayerSlot());
+		const char *interpolationValue = interfaces::pEngine->GetClientConVarValue(player->GetPlayerSlot(), "cl_interp_ratio");
+		if (!netChannel || !utils::IsNumeric(interpolationValue))
+		{
+			return -1;
+		}
+
+		const float roundTripSeconds = netChannel->GetEngineLatency();
+		float interpolationTicks = static_cast<float>(std::strtod(interpolationValue, nullptr));
+		if (!std::isfinite(roundTripSeconds) || roundTripSeconds < 0.0f || roundTripSeconds > 2.0f || !std::isfinite(interpolationTicks)
+			|| interpolationTicks < 0.0f || interpolationTicks > maximumInterpolationTicks)
+		{
+			return -1;
+		}
+		if (interpolationTicks == 0.0f)
+		{
+			interpolationTicks = 1.0f;
+		}
+		// The target snapshot travelled to the client before this aim command travelled back to the server, so use the full RTT.
+		return (std::max)(0, static_cast<int>(std::lround(roundTripSeconds * ENGINE_FIXED_TICK_RATE + interpolationTicks)));
+	}
+
+	HumanizedMeasurement MeasureHumanized(const detection::ShotCorrelator *shots, MovementPlayer *attacker, int victimIndex, int bodyPoint,
+										 const std::array<detection::AimCommand *, humanizedSteps + 1> &commands, int lagTicks)
+	{
+		HumanizedMeasurement result;
+		if (!shots || !attacker || victimIndex < 1 || victimIndex > MAXPLAYERS || bodyPoint < 0
+			|| bodyPoint >= static_cast<int>(std::size(bodyHeights)))
+		{
+			return result;
+		}
+
+		double desiredNorm = 0.0;
+		double actualNorm = 0.0;
+		double cross = 0.0;
+		double movement = 0.0;
+		std::array<std::array<double, 2>, humanizedSteps> desired {};
+		std::array<std::array<double, 2>, humanizedSteps> actual {};
+		for (int index = 1; index <= humanizedSteps; ++index)
+		{
+			const auto *previous = commands[index - 1];
+			const auto *current = commands[index];
+			const auto *observer = current ? shots->FindPosition(current->serverTick, attacker->index) : nullptr;
+			const auto *target = current ? shots->FindPosition(current->serverTick - lagTicks, victimIndex) : nullptr;
+			if (!previous || !current || !observer || !target || !observer->alive || !target->alive || observer->teleported || target->teleported
+				|| !detection::AreOpponents(observer->team, target->team))
+			{
+				return result;
+			}
+
+			const QAngle targetAngles = Bearing(observer->eyePosition, target->origin + Vector(0.0f, 0.0f, bodyHeights[bodyPoint]));
+			if (!detection::IsFinite(targetAngles))
+			{
+				return result;
+			}
+
+			desired[index - 1] = {static_cast<double>(targetAngles.x - previous->angles.x),
+								  static_cast<double>(std::remainder(targetAngles.y - previous->angles.y, 360.0f))};
+			actual[index - 1] = {static_cast<double>(current->angles.x - previous->angles.x),
+								 static_cast<double>(std::remainder(current->angles.y - previous->angles.y, 360.0f))};
+			const double dot = desired[index - 1][0] * actual[index - 1][0] + desired[index - 1][1] * actual[index - 1][1];
+			desiredNorm += desired[index - 1][0] * desired[index - 1][0] + desired[index - 1][1] * desired[index - 1][1];
+			actualNorm += actual[index - 1][0] * actual[index - 1][0] + actual[index - 1][1] * actual[index - 1][1];
+			cross += dot;
+			movement += std::hypot(actual[index - 1][0], actual[index - 1][1]);
+			result.alignedSteps += dot > 0.0;
+		}
+
+		if (desiredNorm <= EPSILON || actualNorm <= EPSILON)
+		{
+			return result;
+		}
+		const double gain = cross / desiredNorm;
+		double residual = 0.0;
+		for (int index = 0; index < humanizedSteps; ++index)
+		{
+			const double pitch = actual[index][0] - gain * desired[index][0];
+			const double yaw = actual[index][1] - gain * desired[index][1];
+			residual += pitch * pitch + yaw * yaw;
+		}
+
+		result.gain = static_cast<float>(gain);
+		result.movement = static_cast<float>(movement);
+		result.fit = static_cast<float>(1.0 - residual / actualNorm);
+		result.alignment = static_cast<float>(cross / std::sqrt(desiredNorm * actualNorm));
+		result.lagTicks = lagTicks;
+		result.valid = std::isfinite(result.gain) && std::isfinite(result.movement) && std::isfinite(result.fit)
+					   && std::isfinite(result.alignment);
+		return result;
 	}
 } // namespace
 
@@ -304,7 +448,10 @@ namespace detection
 		int measuredMovements = 0;
 		const char *measurementFailure = "no continuous adjacent command history was available";
 		bool reusedSnap = false;
+		bool humanizedSeeded = false;
 		AimbotRule matchedRule = AimbotRule::None;
+		float humanizedGain = 0.0f;
+		float humanizedFit = 0.0f;
 
 		struct SmoothPoint
 		{
@@ -489,11 +636,97 @@ namespace detection
 			}
 		}
 
+		if (!suspicious && smoothPoints.size() >= static_cast<size_t>(humanizedSteps + 1))
+		{
+			std::array<AimCommand *, humanizedSteps + 1> commands;
+			std::transform(smoothPoints.end() - static_cast<std::ptrdiff_t>(commands.size()), smoothPoints.end(), commands.begin(),
+						   [](const SmoothPoint &point) { return point.command; });
+			const int estimatedLag = EstimateVisualLagTicks(attacker);
+			HumanizedMeasurement best;
+			HumanizedMeasurement passing;
+			if (estimatedLag >= 0)
+			{
+				const int firstLag = (std::max)(0, estimatedLag - humanizedLagSearchRadius);
+				const int lastLag = estimatedLag + humanizedLagSearchRadius;
+				for (int lagTicks = firstLag; lagTicks <= lastLag; ++lagTicks)
+				{
+					const HumanizedMeasurement measured =
+						MeasureHumanized(shots, attacker, data.victimIndex, smoothBodyPoint, commands, lagTicks);
+					if (!measured.valid)
+					{
+						continue;
+					}
+					if (!best.valid || measured.fit > best.fit)
+					{
+						best = measured;
+					}
+					if (MeetsHumanizedThresholds(measured.gain, measured.movement, measured.fit, measured.alignment, measured.alignedSteps)
+						&& (!passing.valid || measured.fit > passing.fit))
+					{
+						passing = measured;
+					}
+				}
+			}
+
+			const bool fresh = !data.hasCountedIncident || shot->commandNumber > data.lastCountedIncidentCommand;
+			if (fresh && passing.valid)
+			{
+				const auto now = Clock::now();
+				const bool compatible = data.humanizedGainValid && now - data.humanizedGainTime < evidenceWindow
+								&& std::abs(passing.gain - data.humanizedGain) <= humanizedGainTolerance;
+				if (!compatible)
+				{
+					data.humanizedGain = passing.gain;
+					data.humanizedGainTime = now;
+					data.humanizedGainValid = true;
+					humanizedSeeded = true;
+					AIMBOT_DEBUG(
+						"%s seeded humanized smoothing at gain %.3f after six corrections moved %.2f degrees with %.1f%% fit, %.1f%% alignment, "
+						"and %d/6 corrections toward the victim at visual delay %d ticks; a compatible repeat is required.\n",
+						attacker->GetName(), passing.gain, passing.movement, passing.fit * 100.0f, passing.alignment * 100.0f,
+						passing.alignedSteps, passing.lagTicks);
+				}
+				else
+				{
+					const float referenceGain = data.humanizedGain;
+					data.humanizedGain = (data.humanizedGain + passing.gain) * 0.5f;
+					data.humanizedGainTime = now;
+					suspicious = true;
+					matchedRule = AimbotRule::Humanized;
+					largestSnap = passing.movement;
+					humanizedGain = passing.gain;
+					humanizedFit = passing.fit;
+					AIMBOT_DEBUG(
+						"%s matched repeated humanized smoothing: gain %.3f (reference %.3f), six corrections moved %.2f degrees with %.1f%% fit, "
+						"%.1f%% alignment, and %d/6 corrections toward the victim at visual delay %d ticks.\n",
+						attacker->GetName(), passing.gain, referenceGain, passing.movement, passing.fit * 100.0f,
+						passing.alignment * 100.0f, passing.alignedSteps, passing.lagTicks);
+				}
+			}
+			else if (estimatedLag < 0)
+			{
+				AIMBOT_DEBUG("%s humanized smoothing was unavailable because visual delay could not be estimated.\n", attacker->GetName());
+			}
+			else if (best.valid)
+			{
+				AIMBOT_DEBUG(
+					"%s humanized smoothing rejected: gain %.3f/%.2f-%.2f, movement %.2f/%.2f, fit %.1f%%/%.0f%%, alignment "
+					"%.1f%%/%.0f%%, corrections toward victim %d/%d, visual delay %d ticks.\n",
+					attacker->GetName(), best.gain, humanizedMinimumGain, humanizedMaximumGain, best.movement, humanizedMinimumMovement,
+					best.fit * 100.0f, humanizedMinimumFit * 100.0f, best.alignment * 100.0f, humanizedMinimumAlignment * 100.0f,
+					best.alignedSteps, humanizedMinimumAlignedSteps, best.lagTicks);
+			}
+		}
+
 		const int incidentCommand = shot->commandNumber;
 		const std::uint64_t incidentShotId = data.pendingShotId;
 		clearPending();
 		if (!suspicious)
 		{
+			if (humanizedSeeded)
+			{
+				return true;
+			}
 			if (reusedSnap)
 			{
 				AIMBOT_DEBUG("%s ignored a snap that already counted for an earlier damaging shot.\n", attacker->GetName());
@@ -532,7 +765,8 @@ namespace detection
 		data.hasCountedIncident = true;
 		const AimbotEvidenceType evidenceType = matchedRule == AimbotRule::SnapReturn          ? AimbotEvidenceType::SnapReturn
 												: matchedRule == AimbotRule::SmoothConvergence ? AimbotEvidenceType::SmoothConvergence
-																							   : AimbotEvidenceType::Convergence;
+												: matchedRule == AimbotRule::Humanized         ? AimbotEvidenceType::Humanized
+																						   : AimbotEvidenceType::Convergence;
 		PendingAimbotIncident pending;
 		pending.shotId = incidentShotId;
 		pending.fireTick = shot->serverTick;
@@ -541,6 +775,8 @@ namespace detection
 		pending.incident.movement = largestSnap;
 		pending.incident.before = bestBefore;
 		pending.incident.after = bestAfter;
+		pending.incident.gain = humanizedGain;
+		pending.incident.fit = humanizedFit;
 		if (const ShotRecord *record = shots->FindShot(attacker->index, incidentShotId))
 		{
 			pending.fireTick = record->fireTick;
@@ -583,7 +819,8 @@ namespace detection
 	void AimbotModule::AddIncident(MovementPlayer *attacker, const PendingAimbotIncident &pending)
 	{
 		AimbotIncident added = pending.incident;
-		added.points = AimbotPoints(added.airborne, added.wallbang, added.throughSmoke, added.headshot, added.noscope);
+		const int basePoints = added.type == AimbotEvidenceType::Humanized ? humanizedBaseIncidentPoints : baseIncidentPoints;
+		added.points = AimbotPoints(basePoints, added.airborne, added.wallbang, added.throughSmoke, added.headshot, added.noscope);
 
 		const auto now = Clock::now();
 		auto &incidents = evidence[attacker->index];
@@ -597,7 +834,8 @@ namespace detection
 
 		const char *type = added.type == AimbotEvidenceType::SnapReturn          ? "snap-return"
 						   : added.type == AimbotEvidenceType::SmoothConvergence ? "smooth convergence"
-																				 : "convergence";
+						   : added.type == AimbotEvidenceType::Humanized         ? "humanized"
+																		 : "convergence";
 		AIMBOT_DEBUG("%s counted %s %.2f for +%d points; score %d/%d.\n", attacker->GetName(), type, added.movement, added.points, score,
 					 detectionThreshold);
 		if (score < detectionThreshold)
@@ -619,6 +857,11 @@ namespace detection
 													{{"movement", tfm::format("%.2f", incident.movement)},
 													 {"before", tfm::format("%.2f", incident.before)},
 													 {"after", tfm::format("%.2f", incident.after)}});
+					case AimbotEvidenceType::Humanized:
+						return localization::Format("evidence.aimbot.humanized", "{movement}° humanized smoothing (gain {gain}%, fit {fit}%)",
+														{{"movement", tfm::format("%.2f", incident.movement)},
+														 {"gain", tfm::format("%.1f", incident.gain * 100.0f)},
+														 {"fit", tfm::format("%.1f", incident.fit * 100.0f)}});
 					case AimbotEvidenceType::Convergence:
 						return localization::Format("evidence.aimbot.convergence", "{movement}° sudden move ({before}°→{after}°)",
 													{{"movement", tfm::format("%.2f", incident.movement)},
@@ -630,8 +873,9 @@ namespace detection
 			auto addWeights = [](localization::Text text, const AimbotIncident &incident)
 			{
 				const auto base = localization::Format("evidence.aimbot.weight.base", "suspicious aim");
-				std::string englishWeights = tfm::format("%s +%d", base.english.c_str(), baseIncidentPoints);
-				std::string localizedWeights = tfm::format("%s +%d", base.localized.c_str(), baseIncidentPoints);
+				const int basePoints = incident.type == AimbotEvidenceType::Humanized ? humanizedBaseIncidentPoints : baseIncidentPoints;
+				std::string englishWeights = tfm::format("%s +%d", base.english.c_str(), basePoints);
+				std::string localizedWeights = tfm::format("%s +%d", base.localized.c_str(), basePoints);
 				auto add = [&](bool present, const char *key, const char *english)
 				{
 					if (present)
@@ -659,7 +903,9 @@ namespace detection
 														 {"threshold", tfm::format("%d", detectionThreshold)},
 														 {"snap", tfm::format("%.2f", added.movement)},
 														 {"before", tfm::format("%.2f", added.before)},
-														 {"after", tfm::format("%.2f", added.after)}};
+														 {"after", tfm::format("%.2f", added.after)},
+														 {"gain", tfm::format("%.1f", added.gain * 100.0f)},
+														 {"fit", tfm::format("%.1f", added.fit * 100.0f)}};
 			localization::Text latest =
 				added.type == AimbotEvidenceType::SnapReturn
 					? localization::Format("evidence.aimbot.latest.snap_return",
@@ -671,6 +917,12 @@ namespace detection
 						  "evidence.aimbot.latest.smooth",
 						  "During the latest damaging shot, the aim followed an unusually clean {snap} degree curve and its distance "
 						  "from the enemy fell from {before} to {after} degrees. Score: {score}/{threshold} within five minutes.",
+						  values)
+				: added.type == AimbotEvidenceType::Humanized
+					? localization::Format(
+						  "evidence.aimbot.latest.humanized",
+						  "During the latest damaging shot, six consecutive aim corrections followed a consistent {gain}% smoothing factor "
+						  "toward the enemy with {fit}% proportional fit. Score: {score}/{threshold} within five minutes.",
 						  values)
 					: localization::Format(
 						  "evidence.aimbot.latest.convergence",

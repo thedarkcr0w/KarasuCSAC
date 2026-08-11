@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° 急な動き ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° 滑らかな動き ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° 人間化スムージング (係数 {gain}%、適合度 {fit}%)"
 	"evidence.aimlock"	"5 分以内に、CS2AC は {incidents} が 2 秒間にわたってほぼ完璧に敵を追跡していることを発見しました。最新: 敵がプレイヤーの視界を {movement} 度移動している間、{samples} チェックの {precise} の間、照準は敵​​の体の幅の内側に留まりました。その距離では{required}度が必要でした。証拠: {incidents}/{threshold}。"
 	"evidence.silentaim"	"{degrees}° 説明できない角度 - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"接地された"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"最新のダメージショット中に、照準は {snap} 度ジャンプし、すぐに戻りました。5分以内のスコア: {score}/{threshold}。"
 	"evidence.aimbot.latest.convergence"	"最新のダメージショット中、照準は 1 ステップで {snap} 度移動し、敵との距離は {before} から {after} 度に減少しました。5分以内のスコア: {score}/{threshold}。"
 	"evidence.aimbot.latest.smooth"	"最新のダメージを与えるショットでは、照準は異常にきれいな {snap} 度の曲線を描き、敵との距離は {before} から {after} 度に減少しました。5分以内のスコア: {score}/{threshold}。"
+	"evidence.aimbot.latest.humanized"	"直近のダメージショットでは、6回連続の照準補正が敵に向かって一定の {gain}% スムージング係数に従い、比例適合度は {fit}% でした。5分以内のスコア: {score}/{threshold}。"
 	"evidence.triggerbot.latest"	"新たな接触からゲーム更新間隔が {latest_ticks} 回経過した後、プレイヤーはターゲットの {hitgroup} に {damage} ダメージを与えました。{context}。ターゲットのプレイヤースロット: {target}。5分以内のスコア: {score}/{threshold}。"
 }

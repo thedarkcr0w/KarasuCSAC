@@ -342,12 +342,15 @@ namespace detection
 	struct AimbotPlayerData
 	{
 		std::deque<AimCommand> commands;
+		Clock::time_point humanizedGainTime;
 		int pendingShot {-1};
 		std::uint64_t pendingShotId {};
 		int victimIndex {-1};
 		int lastCountedIncidentCommand {};
+		float humanizedGain {};
 		bool pending {};
 		bool hasCountedIncident {};
+		bool humanizedGainValid {};
 	};
 
 	enum class AimbotEvidenceType : std::uint8_t
@@ -355,6 +358,7 @@ namespace detection
 		Convergence,
 		SnapReturn,
 		SmoothConvergence,
+		Humanized,
 	};
 
 	struct AimbotIncident
@@ -365,6 +369,8 @@ namespace detection
 		float movement {};
 		float before {};
 		float after {};
+		float gain {};
+		float fit {};
 		bool airborne {};
 		bool wallbang {};
 		bool throughSmoke {};

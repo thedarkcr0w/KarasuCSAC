@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° náhlý pohyb ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° plynulý pohyb ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° humanizované vyhlazení (zisk {gain} %, shoda {fit} %)"
 	"evidence.aimlock"	"Během pěti minut našel CS2AC {incidents} oddělené dvousekundové periody téměř dokonalého sledování nepřítele. Nejnovější: cíl zůstal uvnitř šířky těla nepřítele po dobu kontrol {precise} nebo {samples}, zatímco se nepřítel posunul o {movement} ve zorném poli hráče; Na tuto vzdálenost bylo požadováno {required} stupňů. Důkaz: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° nevysvětlený úhel - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"uzemněný"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Při posledním škodlivém výstřelu zaměřovač vyskočil stupňů {snap} a okamžitě se vrátil. Skóre: {score}/{threshold} do pěti minut."
 	"evidence.aimbot.latest.convergence"	"Při posledním škodlivém výstřelu se cíl posunul o {snap} stupňů v jednom kroku a jeho vzdálenost od nepřítele klesla ze {before} na {after} stupňů. Skóre: {score}/{threshold} do pěti minut."
 	"evidence.aimbot.latest.smooth"	"Při posledním škodlivém výstřelu cíl sledoval neobvykle čistou křivku stupňů {snap} a jeho vzdálenost od nepřítele klesla ze {before} na {after} stupňů. Skóre: {score}/{threshold} do pěti minut."
+	"evidence.aimbot.latest.humanized"	"Při posledním zásahu následovalo šest po sobě jdoucích oprav míření stálý vyhlazovací poměr {gain} % směrem k nepříteli s proporcionální shodou {fit} %. Skóre: {score}/{threshold} do pěti minut."
 	"evidence.triggerbot.latest"	"Hráč způsobil {damage} poškození v oblasti {hitgroup} cíle po {latest_ticks} intervalech aktualizace hry od nového kontaktu; {context}. Slot cíle: {target}. Skóre: {score}/{threshold} během pěti minut."
 }

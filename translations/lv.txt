@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° pēkšņa kustība ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° vienmērīga kustība ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° cilvēciskota izlīdzināšana (koeficients {gain}%, atbilstība {fit}%)"
 	"evidence.aimlock"	"Piecu minūšu laikā CS2AC atklāja {incidents} atsevišķus divu sekunžu periodus, kuros gandrīz ideāls ienaidnieks tika izsekots. Jaunākais: mērķis palika ienaidnieka ķermeņa platumā {precise} no {samples} pārbaudēm, kamēr ienaidnieks pārvietoja {movement} grādus pāri spēlētāja skatam; Tādā attālumā bija nepieciešami {required} grādi. Pierādījumi: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° neizskaidrojams leņķis - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"iezemēts"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Pēdējā bojājošā šāviena laikā mērķis uzlēca par {snap} grādiem un nekavējoties atgriezās. Rezultāts: {score}/{threshold} piecu minūšu laikā."
 	"evidence.aimbot.latest.convergence"	"Pēdējā bojājošā šāviena laikā mērķis vienā solī pārvietojās par {snap} grādiem, un tā attālums no ienaidnieka samazinājās no {before} līdz {after} grādiem. Rezultāts: {score}/{threshold} piecu minūšu laikā."
 	"evidence.aimbot.latest.smooth"	"Pēdējā postošā šāviena laikā mērķis sekoja neparasti tīrai {snap} grādu līknei, un tā attālums no ienaidnieka samazinājās no {before} līdz {after} grādiem. Rezultāts: {score}/{threshold} piecu minūšu laikā."
+	"evidence.aimbot.latest.humanized"	"Pēdējā bojājumus nodarošā šāviena laikā sešas secīgas mērķēšanas korekcijas sekoja pastāvīgam {gain}% izlīdzināšanas koeficientam ienaidnieka virzienā ar {fit}% proporcionālu atbilstību. Rezultāts: {score}/{threshold} piecu minūšu laikā."
 	"evidence.triggerbot.latest"	"Pēc jauna kontakta un {latest_ticks} spēles atjaunināšanas intervāliem spēlētājs nodarīja {damage} bojājumus mērķa {hitgroup}; {context}. Mērķa spēlētāja slots: {target}. Rezultāts: {score}/{threshold} piecu minūšu laikā."
 }

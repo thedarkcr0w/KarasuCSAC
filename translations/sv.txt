@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° plötslig rörelse ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° jämn rörelse ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° humaniserad utjämning (faktor {gain} %, anpassning {fit} %)"
 	"evidence.aimlock"	"Inom fem minuter hittade CS2AC {incidents} separata tvåsekundersperioder av nästan perfekt fiendespårning. Senaste: målet stannade inom fiendens kroppsbredd i {precise} av {samples} kontroller medan fienden rörde sig {movement} grader över spelarens vy; {required} grader krävdes på det avståndet. Bevis: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° oförklarlig vinkel - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"grundad"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Under det senaste skadliga skottet hoppade siktet {snap} grader och återvände omedelbart. Poäng: {score}/{threshold} inom fem minuter."
 	"evidence.aimbot.latest.convergence"	"Under det senaste skadliga skottet flyttade siktet {snap} grader i ett steg och dess avstånd från fienden sjönk från {before} till {after} grader. Poäng: {score}/{threshold} inom fem minuter."
 	"evidence.aimbot.latest.smooth"	"Under det senaste skadliga skottet följde siktet en ovanligt ren {snap} gradkurva och dess avstånd från fienden sjönk från {before} till {after} grader. Poäng: {score}/{threshold} inom fem minuter."
+	"evidence.aimbot.latest.humanized"	"Under det senaste skadliga skottet följde sex på varandra följande sikteskorrigeringar en stabil utjämningsfaktor på {gain} % mot fienden med {fit} % proportionell anpassning. Poäng: {score}/{threshold} inom fem minuter."
 	"evidence.triggerbot.latest"	"Spelaren orsakade {damage} skada på målets {hitgroup} efter {latest_ticks} speluppdateringsintervall från den nya kontakten; {context}. Målspelarens plats: {target}. Poäng: {score}/{threshold} inom fem minuter."
 }

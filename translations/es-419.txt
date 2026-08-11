@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° movimiento repentino ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° movimiento suave ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° suavizado humanizado (factor {gain}%, ajuste {fit}%)"
 	"evidence.aimlock"	"En cinco minutos, CS2AC encontró {incidents} períodos separados de dos segundos de seguimiento enemigo casi perfecto. Lo último: el objetivo permaneció dentro del ancho del cuerpo del enemigo durante las comprobaciones {precise} o {samples} mientras el enemigo se movía {movement} grados a través de la vista del jugador; A esa distancia se requerían {required} grados. Evidencia: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° ángulo sin explicación - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"conectado a tierra"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Durante el último disparo que causó daño, la mira saltó {snap} grados y volvió inmediatamente. Puntuación: {score}/{threshold} en cinco minutos."
 	"evidence.aimbot.latest.convergence"	"Durante el último disparo dañino, el objetivo se movió {snap} grados en un solo paso y su distancia del enemigo cayó de {before} a {after} grados. Puntuación: {score}/{threshold} en cinco minutos."
 	"evidence.aimbot.latest.smooth"	"Durante el último disparo dañino, el objetivo siguió una curva de grados {snap} inusualmente limpia y su distancia del enemigo cayó de grados {before} a {after}. Puntuación: {score}/{threshold} en cinco minutos."
+	"evidence.aimbot.latest.humanized"	"Durante el último disparo con daño, seis correcciones consecutivas de la mira siguieron un factor de suavizado constante de {gain}% hacia el enemigo con un ajuste proporcional de {fit}%. Puntuación: {score}/{threshold} en cinco minutos."
 	"evidence.triggerbot.latest"	"El jugador infligió {damage} de daño en el {hitgroup} del objetivo después de {latest_ticks} intervalos de actualización del juego desde el nuevo contacto; {context}. Casilla del jugador objetivo: {target}. Puntuación: {score}/{threshold} en cinco minutos."
 }

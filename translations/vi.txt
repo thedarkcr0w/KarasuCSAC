@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° chuyển động đột ngột ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° chuyển động mượt ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° làm mượt kiểu người (hệ số {gain}%, độ khớp {fit}%)"
 	"evidence.aimlock"	"Trong vòng năm phút, CS2AC phát hiện {incidents} giai đoạn riêng biệt, mỗi giai đoạn kéo dài hai giây, trong đó người chơi bám mục tiêu gần như hoàn hảo. Lần gần nhất: tâm ngắm nằm trong bề rộng cơ thể đối thủ ở {precise}/{samples} lần kiểm tra khi đối thủ di chuyển {movement} độ qua tầm nhìn; ở khoảng cách đó cần ít nhất {required} độ. Bằng chứng: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° góc không thể giải thích - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"căn cứ"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Trong lần bắn sát thương mới nhất, mục tiêu đã nhảy lên độ {snap} và ngay lập tức quay trở lại. Điểm: {score}/{threshold} trong vòng năm phút."
 	"evidence.aimbot.latest.convergence"	"Trong lần bắn sát thương mới nhất, mục tiêu đã di chuyển độ {snap} trong một bước và khoảng cách của nó với kẻ thù giảm từ {before} xuống {after} độ. Điểm: {score}/{threshold} trong vòng năm phút."
 	"evidence.aimbot.latest.smooth"	"Trong lần bắn sát thương mới nhất, mục tiêu đi theo một đường cong độ {snap} rõ ràng bất thường và khoảng cách của nó với kẻ thù giảm từ độ {before} xuống độ {after}. Điểm: {score}/{threshold} trong vòng năm phút."
+	"evidence.aimbot.latest.humanized"	"Trong phát bắn gây sát thương gần nhất, sáu lần chỉnh tâm liên tiếp tuân theo hệ số làm mượt ổn định {gain}% hướng về kẻ địch với độ khớp tỷ lệ {fit}%. Điểm: {score}/{threshold} trong vòng năm phút."
 	"evidence.triggerbot.latest"	"Sau {latest_ticks} khoảng cập nhật trò chơi kể từ lần tiếp xúc mới, người chơi gây {damage} sát thương vào {hitgroup} của mục tiêu; {context}. Vị trí người chơi của mục tiêu: {target}. Điểm: {score}/{threshold} trong vòng năm phút."
 }

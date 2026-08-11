@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° nagły ruch ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° płynny ruch ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° humanizowane wygładzanie (współczynnik {gain}%, dopasowanie {fit}%)"
 	"evidence.aimlock"	"W ciągu pięciu minut CS2AC znalazł {incidents} oddzielne dwusekundowe okresy niemal doskonałego śledzenia wroga. Najnowsze: cel pozostawał w zasięgu ciała wroga podczas testów {precise} lub {samples}, podczas gdy wróg poruszał się {movement} o stopnie w polu widzenia gracza; Na tę odległość wymagane były stopnie {required}. Dowód: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° niewyjaśniony kąt - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"uziemiony"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Podczas ostatniego niszczącego strzału cel przeskoczył o stopień {snap} i natychmiast powrócił. Wynik: {score}/{threshold} w ciągu pięciu minut."
 	"evidence.aimbot.latest.convergence"	"Podczas ostatniego niszczącego strzału cel przesunął się o stopień {snap} o jeden krok, a jego odległość od wroga spadła z {before} do stopnia {after}. Wynik: {score}/{threshold} w ciągu pięciu minut."
 	"evidence.aimbot.latest.smooth"	"Podczas ostatniego niszczącego strzału cel podążał po niezwykle czystej krzywej stopni {snap}, a jego odległość od wroga spadła z {before} do {after} stopni. Wynik: {score}/{threshold} w ciągu pięciu minut."
+	"evidence.aimbot.latest.humanized"	"Podczas ostatniego trafienia sześć kolejnych korekt celowania zachowało stały współczynnik wygładzania {gain}% w stronę przeciwnika z proporcjonalnym dopasowaniem {fit}%. Wynik: {score}/{threshold} w ciągu pięciu minut."
 	"evidence.triggerbot.latest"	"Gracz zadał {damage} obrażeń w {hitgroup} celu po {latest_ticks} interwałach aktualizacji gry od nowego kontaktu; {context}. Slot gracza celu: {target}. Wynik: {score}/{threshold} w ciągu pięciu minut."
 }

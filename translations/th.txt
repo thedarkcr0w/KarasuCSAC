@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° การเคลื่อนไหวฉับพลัน ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° การเคลื่อนไหวราบรื่น ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° การปรับเล็งแบบมนุษย์ (ตัวคูณ {gain}% ความสอดคล้อง {fit}%)"
 	"evidence.aimlock"	"ภายในห้านาที CS2AC พบ {incidents} แยกช่วงเวลาสองวินาทีของการติดตามศัตรูที่เกือบจะสมบูรณ์แบบ ล่าสุด: เป้าหมายอยู่ภายในความกว้างลำตัวของศัตรูสำหรับ {precise} ของ {samples} ตรวจสอบในขณะที่ศัตรูเคลื่อนที่ {movement} องศาในมุมมองของผู้เล่น; {required} องศาเป็นสิ่งจำเป็นที่ระยะทางนั้น หลักฐาน: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° มุมที่อธิบายไม่ได้ - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"ต่อสายดิน"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"ในระหว่างการยิงที่สร้างความเสียหายครั้งล่าสุด เป้าหมายได้กระโดดขึ้นระดับ {snap} และกลับมาทันที คะแนน: {score}/{threshold} ภายในห้านาที"
 	"evidence.aimbot.latest.convergence"	"ในระหว่างการยิงที่สร้างความเสียหายครั้งล่าสุด เป้าหมายได้ขยับองศาของ {snap} ในหนึ่งก้าว และระยะห่างจากศัตรูลดลงจาก {before} เป็นองศา {after} คะแนน: {score}/{threshold} ภายในห้านาที"
 	"evidence.aimbot.latest.smooth"	"ในระหว่างการยิงที่สร้างความเสียหายครั้งล่าสุด เป้าหมายนั้นเป็นไปตามเส้นโค้งองศา {snap} ที่สะอาดผิดปกติ และระยะห่างจากศัตรูลดลงจาก {before} ถึง {after} องศา คะแนน: {score}/{threshold} ภายในห้านาที"
+	"evidence.aimbot.latest.humanized"	"ในการยิงที่สร้างความเสียหายครั้งล่าสุด การแก้ไขเป้าหมายหกครั้งติดต่อกันเป็นไปตามตัวคูณการปรับเล็งคงที่ {gain}% เข้าหาศัตรู โดยมีความสอดคล้องตามสัดส่วน {fit}% คะแนน: {score}/{threshold} ภายในห้านาที"
 	"evidence.triggerbot.latest"	"ผู้เล่นสร้างความเสียหาย {damage} ที่ {hitgroup} ของเป้าหมาย หลังจากมีการสัมผัสใหม่ไปแล้ว {latest_ticks} ช่วงการอัปเดตเกม; {context} ช่องผู้เล่นของเป้าหมาย: {target} คะแนน: {score}/{threshold} ภายในห้านาที"
 }

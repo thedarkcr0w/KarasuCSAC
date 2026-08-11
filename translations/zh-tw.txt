@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° 突然移動 ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° 平滑移動 ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° 擬人平滑（係數 {gain}%，擬合度 {fit}%）"
 	"evidence.aimlock"	"在五分鐘內，CS2AC 發現 {incidents} 段各自持續兩秒、近乎完美追蹤敵人的情況。最近一次：當敵人在玩家視野中移動 {movement} 度時，準星在 {samples} 次檢查中有 {precise} 次保持在敵人身體寬度內；該距離要求至少移動 {required} 度。證據：{incidents}/{threshold}。"
 	"evidence.silentaim"	"{degrees}° 無法解釋的角度 - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"接地氣"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"在最近一次破壞性射擊中，瞄準器跳躍了 {snap} 度並立即返回。五分鐘內得分：{score}/{threshold}。"
 	"evidence.aimbot.latest.convergence"	"在最新的傷害射擊中，瞄準一步移動了{snap}度，與敵人的距離從{before}下降到了{after}度。五分鐘內得分：{score}/{threshold}。"
 	"evidence.aimbot.latest.smooth"	"在最新的破壞性射擊中，瞄準遵循異常乾淨的{snap}度曲線，與敵人的距離從{before}下降到{after}度。五分鐘內得分：{score}/{threshold}。"
+	"evidence.aimbot.latest.humanized"	"在最近一次造成傷害的射擊中，連續六次瞄準修正以穩定的 {gain}% 平滑係數朝向敵人，比例擬合度為 {fit}%。五分鐘內得分：{score}/{threshold}。"
 	"evidence.triggerbot.latest"	"新接觸後經過 {latest_ticks} 個遊戲更新間隔，玩家對目標的 {hitgroup} 造成了 {damage} 點傷害；{context}。目標玩家槽位：{target}。五分鐘內得分：{score}/{threshold}。"
 }

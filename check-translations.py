@@ -18,6 +18,7 @@ technical_compact_keys = {
     "evidence.aimbot.snap_return",
     "evidence.aimbot.convergence",
     "evidence.aimbot.smooth",
+    "evidence.aimbot.humanized",
     "evidence.silentaim",
     "evidence.triggerbot",
     "evidence.antiaim.category_entry",
@@ -27,6 +28,7 @@ aimbot_score_keys = {
     "evidence.aimbot.latest.snap_return",
     "evidence.aimbot.latest.convergence",
     "evidence.aimbot.latest.smooth",
+    "evidence.aimbot.latest.humanized",
 }
 
 

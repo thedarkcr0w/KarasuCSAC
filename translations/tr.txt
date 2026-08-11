@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° ani hareket ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° akıcı hareket ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° insanlaştırılmış yumuşatma (oran {gain}%, uyum {fit}%)"
 	"evidence.aimlock"	"Beş dakika içinde CS2AC, düşmanı neredeyse kusursuz biçimde takip eden {incidents} ayrı iki saniyelik dönem buldu. En son dönemde nişan, düşman oyuncunun görüş alanında {movement} derece hareket ederken {samples} kontrolün {precise} tanesinde düşmanın vücut genişliği içinde kaldı; bu mesafede en az {required} derece hareket bekleniyordu. Kanıt: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° açıklanamayan açı - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"yerde"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Son hasar veren atışta nişan {snap} derece sıçradı ve hemen geri döndü. Puan: {score}/{threshold} (beş dakika içinde)."
 	"evidence.aimbot.latest.convergence"	"Son hasar veren atışta nişan tek adımda {snap} derece hareket etti; düşmana olan açısal mesafe {before} dereceden {after} dereceye düştü. Puan: {score}/{threshold} (beş dakika içinde)."
 	"evidence.aimbot.latest.smooth"	"Son hasar veren atışta nişan olağandışı derecede düzgün bir {snap} derecelik eğri izledi; düşmana olan açısal mesafe {before} dereceden {after} dereceye düştü. Puan: {score}/{threshold} (beş dakika içinde)."
+	"evidence.aimbot.latest.humanized"	"Son hasar veren atışta art arda altı nişan düzeltmesi, düşmana doğru sabit bir %{gain} yumuşatma oranını %{fit} oransal uyumla izledi. Puan: {score}/{threshold} (beş dakika içinde)."
 	"evidence.triggerbot.latest"	"Oyuncu, yeni temastan {latest_ticks} oyun güncellemesi sonra hedefin {hitgroup} bölgesine {damage} hasar verdi; {context}. Hedef oyuncu yuvası: {target}. Puan: {score}/{threshold} (beş dakika içinde)."
 }

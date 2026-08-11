@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° mouvement brusque ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° mouvement fluide ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° lissage humanisé (facteur {gain} %, ajustement {fit} %)"
 	"evidence.aimlock"	"En cinq minutes, CS2AC a trouvé {incidents} des périodes distinctes de deux secondes de suivi de l'ennemi presque parfait. Dernier point : la visée est restée à l'intérieur de la largeur du corps de l'ennemi lors des contrôles de {precise} ou de {samples} tandis que l'ennemi s'est déplacé de degrés {movement} à travers la vue du joueur ; Les degrés {required} étaient requis à cette distance. Preuve : {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° angle inexpliqué - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"fondé"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Lors du dernier tir infligeant des dégâts, la visée a dévié de {snap} degrés puis est immédiatement revenue. Score : {score}/{threshold} dans les cinq minutes."
 	"evidence.aimbot.latest.convergence"	"Lors du dernier tir dommageable, la visée s'est déplacée de degrés {snap} en une seule étape et sa distance par rapport à l'ennemi est tombée de {before} à degrés {after}. Score : {score}/{threshold} dans les cinq minutes."
 	"evidence.aimbot.latest.smooth"	"Lors du dernier tir dommageable, la visée a suivi une courbe de degrés {snap} inhabituellement nette et sa distance par rapport à l'ennemi est passée de {before} à {after} degrés. Score : {score}/{threshold} dans les cinq minutes."
+	"evidence.aimbot.latest.humanized"	"Lors du dernier tir infligeant des dégâts, six corrections de visée consécutives ont suivi un facteur de lissage constant de {gain} % vers l'ennemi avec un ajustement proportionnel de {fit} %. Score : {score}/{threshold} dans les cinq minutes."
 	"evidence.triggerbot.latest"	"Le joueur a infligé {damage} dégâts au {hitgroup} de la cible après {latest_ticks} intervalles de mise à jour du jeu depuis le nouveau contact ; {context}. Emplacement du joueur ciblé : {target}. Score : {score}/{threshold} dans les cinq minutes."
 }

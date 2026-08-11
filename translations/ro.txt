@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° mișcare bruscă ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° mișcare lină ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° netezire umanizată (factor {gain}%, potrivire {fit}%)"
 	"evidence.aimlock"	"În cinci minute, CS2AC a găsit {incidents} perioade separate de două secunde de urmărire aproape perfectă a inamicului. Cel mai recent: scopul a rămas în interiorul lățimii corpului inamicului pentru verificările {precise} sau {samples}, în timp ce inamicul s-a deplasat cu grade {movement} în vederea jucătorului; La acea distanță erau necesare grade {required}. Dovezi: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° unghi inexplicabil - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"împământat"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"În timpul celei mai recente lovituri dăunătoare, ținta a sărit {snap} grade și a revenit imediat. Scor: {score}/{threshold} în cinci minute."
 	"evidence.aimbot.latest.convergence"	"În timpul celei mai recente lovituri dăunătoare, obiectivul a mutat {snap} grade într-un singur pas, iar distanța sa față de inamic a scăzut de la {before} la {after} grade. Scor: {score}/{threshold} în cinci minute."
 	"evidence.aimbot.latest.smooth"	"În timpul celei mai recente lovituri dăunătoare, obiectivul a urmat o curbă de grade {snap} neobișnuit de curată, iar distanța sa față de inamic a scăzut de la grade {before} la {after}. Scor: {score}/{threshold} în cinci minute."
+	"evidence.aimbot.latest.humanized"	"La cea mai recentă lovitură cu daune, șase corecții consecutive ale țintei au urmat un factor constant de netezire de {gain}% spre inamic, cu o potrivire proporțională de {fit}%. Scor: {score}/{threshold} în cinci minute."
 	"evidence.triggerbot.latest"	"Jucătorul a provocat {damage} daune în zona {hitgroup} a țintei după {latest_ticks} intervale de actualizare a jocului de la contactul nou; {context}. Slotul jucătorului țintă: {target}. Scor: {score}/{threshold} în cinci minute."
 }

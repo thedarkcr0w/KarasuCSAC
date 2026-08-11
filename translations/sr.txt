@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° нагли покрет ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° гладак покрет ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° хуманизовано ублажавање (фактор {gain}%, уклапање {fit}%)"
 	"evidence.aimlock"	"У року од пет минута, ЦС2АЦ је пронашао {incidents} одвојене двосекундне периоде скоро савршеног праћења непријатеља. Најновије: циљ је остао унутар ширине непријатељског тела за {precise} од {samples} провера док се непријатељ померао {movement} степени преко погледа играча; {required} степени је био потребан на тој удаљености. Доказ: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° необјашњив угао - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"утемељено"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Током последњег хица који је нанео штету, нишан је скочио за {snap} степени и одмах се вратио. Оцена: {score}/{threshold} у року од пет минута."
 	"evidence.aimbot.latest.convergence"	"Током последњег хица који је нанео штету, нишан се померио за {snap} степени у једном кораку, а удаљеност од непријатеља смањила се са {before} на {after} степени. Оцена: {score}/{threshold} у року од пет минута."
 	"evidence.aimbot.latest.smooth"	"Током последњег хица који је нанео штету, нишан је пратио необично глатку криву од {snap} степени, а удаљеност од непријатеља смањила се са {before} на {after} степени. Оцена: {score}/{threshold} у року од пет минута."
+	"evidence.aimbot.latest.humanized"	"Током последњег хица са штетом, шест узастопних корекција нишана пратило је сталан фактор ублажавања од {gain}% ка непријатељу уз {fit}% пропорционалног уклапања. Оцена: {score}/{threshold} у року од пет минута."
 	"evidence.triggerbot.latest"	"Играч је нанео {damage} штете у {hitgroup} мете након {latest_ticks} интервала ажурирања игре од новог контакта; {context}. Утор играча мете: {target}. Оцена: {score}/{threshold} у року од пет минута."
 }

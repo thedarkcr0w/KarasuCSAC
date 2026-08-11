@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° حركة مفاجئة ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° حركة سلسة ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° تنعيم بشري (الكسب {gain}%، المطابقة {fit}%)"
 	"evidence.aimlock"	"في غضون خمس دقائق، عثر CS2AC على {incidents} فترتين منفصلتين من تتبع العدو شبه المثالي. الأحدث: بقي الهدف داخل عرض جسم العدو لإجراء عمليات فحص {precise} لـ {samples} بينما تحرك العدو بدرجات {movement} عبر رؤية اللاعب؛ كانت درجات {required} مطلوبة في تلك المسافة. الأدلة: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° زاوية غير مفسرة - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"مؤرض"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"خلال آخر طلقة مدمرة، قفز الهدف {snap} درجات وعاد على الفور. النتيجة: {score}/{threshold} خلال خمس دقائق."
 	"evidence.aimbot.latest.convergence"	"أثناء الطلقة المدمرة الأخيرة، تحرك الهدف بدرجات {snap} في خطوة واحدة وانخفضت المسافة بينه وبين العدو من {before} إلى درجات {after}. النتيجة: {score}/{threshold} خلال خمس دقائق."
 	"evidence.aimbot.latest.smooth"	"أثناء اللقطة المدمرة الأخيرة، اتبع الهدف منحنى درجة {snap} نظيفًا بشكل غير عادي وانخفضت المسافة بينه وبين العدو من {before} إلى درجات {after}. النتيجة: {score}/{threshold} خلال خمس دقائق."
+	"evidence.aimbot.latest.humanized"	"أثناء آخر طلقة سببت ضررًا، اتبعت ستة تصحيحات متتالية للتصويب عامل تنعيم ثابتًا بنسبة {gain}% نحو العدو مع تطابق تناسبي بنسبة {fit}%. النتيجة: {score}/{threshold} خلال خمس دقائق."
 	"evidence.triggerbot.latest"	"ألحق اللاعب {damage} من الضرر بالجزء {hitgroup} من الهدف بعد {latest_ticks} من فواصل تحديث اللعبة منذ التماس الأول؛ {context}. خانة اللاعب للهدف: {target}. النتيجة: {score}/{threshold} خلال خمس دقائق."
 }

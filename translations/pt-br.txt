@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° movimento repentino ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° movimento suave ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° suavização humanizada (fator {gain}%, ajuste {fit}%)"
 	"evidence.aimlock"	"Em cinco minutos, CS2AC encontrou {incidents} períodos separados de dois segundos de rastreamento quase perfeito do inimigo. Mais recente: a mira permaneceu dentro da largura do corpo do inimigo para verificações de {precise} de {samples} enquanto o inimigo movia graus {movement} na visão do jogador; Os graus {required} eram necessários a essa distância. Evidência: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° ângulo inexplicável - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"de castigo"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Durante o último tiro prejudicial, a mira saltou graus {snap} e retornou imediatamente. Pontuação: {score}/{threshold} em cinco minutos."
 	"evidence.aimbot.latest.convergence"	"Durante o último tiro prejudicial, a mira moveu graus {snap} em um passo e sua distância do inimigo caiu de graus {before} para {after}. Pontuação: {score}/{threshold} em cinco minutos."
 	"evidence.aimbot.latest.smooth"	"Durante o último tiro prejudicial, a mira seguiu uma curva de graus {snap} incomumente limpa e sua distância do inimigo caiu de graus {before} para {after}. Pontuação: {score}/{threshold} em cinco minutos."
+	"evidence.aimbot.latest.humanized"	"No último disparo com dano, seis correções consecutivas da mira seguiram um fator de suavização constante de {gain}% em direção ao inimigo com ajuste proporcional de {fit}%. Pontuação: {score}/{threshold} em cinco minutos."
 	"evidence.triggerbot.latest"	"O jogador causou {damage} de dano ao {hitgroup} do alvo após {latest_ticks} intervalos de atualização do jogo desde o novo contato; {context}. Slot do jogador-alvo: {target}. Pontuação: {score}/{threshold} em cinco minutos."
 }

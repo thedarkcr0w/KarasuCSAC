@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° απότομη κίνηση ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° ομαλή κίνηση ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° εξομάλυνση ανθρώπινης μορφής (συντελεστής {gain}%, προσαρμογή {fit}%)"
 	"evidence.aimlock"	"Μέσα σε πέντε λεπτά, το CS2AC βρήκε το {incidents} ξεχωριστές περιόδους δύο δευτερολέπτων σχεδόν τέλειας παρακολούθησης του εχθρού. Τελευταία: ο στόχος παρέμεινε εντός του πλάτους του σώματος του εχθρού για {precise} των επιταγών {samples} ενώ ο εχθρός μετακινήθηκε {movement} μοίρες κατά μήκος της όψης του παίκτη. Σε αυτή την απόσταση απαιτούνταν βαθμούς {required}. Αποδεικτικά στοιχεία: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° ανεξήγητη γωνία - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"γειωμένος"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Κατά την τελευταία καταστροφική βολή, ο στόχος πήδηξε {snap} μοίρες και επέστρεψε αμέσως. Βαθμολογία: {score}/{threshold} μέσα σε πέντε λεπτά."
 	"evidence.aimbot.latest.convergence"	"Κατά τη διάρκεια της τελευταίας καταστροφικής βολής, ο στόχος μετακινήθηκε {snap} μοίρες σε ένα βήμα και η απόστασή του από τον εχθρό έπεσε από {before} σε {after} μοίρες. Βαθμολογία: {score}/{threshold} μέσα σε πέντε λεπτά."
 	"evidence.aimbot.latest.smooth"	"Κατά την τελευταία καταστροφική βολή, ο στόχος ακολούθησε μια ασυνήθιστα καθαρή καμπύλη μοιρών {snap} και η απόστασή του από τον εχθρό έπεσε από {before} σε {after} μοίρες. Βαθμολογία: {score}/{threshold} μέσα σε πέντε λεπτά."
+	"evidence.aimbot.latest.humanized"	"Στην τελευταία βολή που προκάλεσε ζημιά, έξι διαδοχικές διορθώσεις σκόπευσης ακολούθησαν σταθερό συντελεστή εξομάλυνσης {gain}% προς τον εχθρό με αναλογική προσαρμογή {fit}%. Βαθμολογία: {score}/{threshold} μέσα σε πέντε λεπτά."
 	"evidence.triggerbot.latest"	"Ο παίκτης προκάλεσε {damage} ζημιά στο {hitgroup} του στόχου μετά από {latest_ticks} διαστήματα ενημέρωσης του παιχνιδιού από τη νέα επαφή· {context}. Θέση παίκτη στόχου: {target}. Βαθμολογία: {score}/{threshold} μέσα σε πέντε λεπτά."
 }

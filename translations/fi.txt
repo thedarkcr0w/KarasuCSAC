@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° äkilline liike ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° tasainen liike ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° ihmismäinen tasoitus (kerroin {gain} %, sopivuus {fit} %)"
 	"evidence.aimlock"	"Viiden minuutin kuluessa CS2AC löysi {incidents}:n erilliset kahden sekunnin jaksot lähes täydellisestä vihollisen jäljittämisestä. Viimeisin: tavoite pysyi vihollisen kehon leveyden sisällä {samples}-tarkistusten {precise} aikana, kun vihollinen siirsi {movement} astetta pelaajan näkymän poikki; Tällä etäisyydellä vaadittiin {required} astetta. Todisteet: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° selittämätön kulma - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"maadoitettu"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Viimeisimmän vahingoittavan laukauksen aikana tähtäin hyppäsi {snap} astetta ja palasi välittömästi. Pisteet: {score}/{threshold} viiden minuutin sisällä."
 	"evidence.aimbot.latest.convergence"	"Viimeisimmän vahingollisen laukauksen aikana tähtäys liikkui {snap} astetta yhdessä askelessa ja sen etäisyys vihollisesta putosi {before}:stä {after} asteeseen. Pisteet: {score}/{threshold} viiden minuutin sisällä."
 	"evidence.aimbot.latest.smooth"	"Viimeisimmän vahingollisen laukauksen aikana tähtäys noudatti epätavallisen puhdasta {snap}-astekäyrää ja sen etäisyys vihollisesta putosi {before}:stä {after} asteeseen. Pisteet: {score}/{threshold} viiden minuutin sisällä."
+	"evidence.aimbot.latest.humanized"	"Viimeisimmässä vahinkoa tehneessä laukauksessa kuusi peräkkäistä tähtäyskorjausta noudatti tasaista {gain} %:n tasoituskerrointa kohti vihollista {fit} %:n suhteellisella sopivuudella. Pisteet: {score}/{threshold} viiden minuutin sisällä."
 	"evidence.triggerbot.latest"	"Pelaaja aiheutti kohteen {hitgroup}-osaan {damage} vahinkoa {latest_ticks} pelin päivitysvälin jälkeen uuden kontaktin alkamisesta; {context}. Kohteen pelaajapaikka: {target}. Pisteet: {score}/{threshold} viiden minuutin sisällä."
 }

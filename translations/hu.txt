@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° hirtelen mozdulat ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° sima mozdulat ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° emberiesített simítás (arány {gain}%, illeszkedés {fit}%)"
 	"evidence.aimlock"	"Öt percen belül a CS2AC azt találta, hogy {incidents} két másodperces különálló periódusok közel tökéletes ellenségkövetésre. Legutóbbi: a cél az ellenség testszélességén belül maradt a {precise} és a {samples} ellenőrzések során, míg az ellenség {movement} fokkal mozgott a játékos látószögében; Ezen a távolságon {required} fok kellett. Bizonyíték: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° megmagyarázhatatlan szög - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"földelt"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"A legutóbbi károsító lövés során a cél {snap} fokot ugrott, és azonnal visszatért. Pontszám: {score}/{threshold} öt percen belül."
 	"evidence.aimbot.latest.convergence"	"A legutóbbi sebző lövés során a cél egy lépésben {snap} fokot mozdult el, és az ellenségtől való távolsága {before}-ről {after} fokra csökkent. Pontszám: {score}/{threshold} öt percen belül."
 	"evidence.aimbot.latest.smooth"	"A legutóbbi sebző lövés során a cél egy szokatlanul tiszta {snap} fokos görbét követett, és az ellenségtől való távolsága {before}-ről {after} fokra esett. Pontszám: {score}/{threshold} öt percen belül."
+	"evidence.aimbot.latest.humanized"	"A legutóbbi sebző lövésnél hat egymást követő célkorrekció állandó, {gain}%-os simítási arányt követett az ellenség felé, {fit}%-os arányos illeszkedéssel. Pontszám: {score}/{threshold} öt percen belül."
 	"evidence.triggerbot.latest"	"A játékos {damage} sebzést okozott a célpont {hitgroup} testrészén {latest_ticks} játékfrissítési időközzel az új kontaktust követően; {context}. A célpont játékoshelye: {target}. Pontszám: {score}/{threshold} öt percen belül."
 }

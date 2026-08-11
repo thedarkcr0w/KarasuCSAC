@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° תנועה פתאומית ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° תנועה חלקה ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° החלקה אנושית (מקדם {gain}%, התאמה {fit}%)"
 	"evidence.aimlock"	"תוך חמש דקות, CS2AC מצא {incidents} תקופות נפרדות של שתי שניות של מעקב אחר אויב כמעט מושלם. אחרון: המטרה נשארה בתוך רוחב הגוף של האויב עבור {precise} של צ'קים של {samples} בעוד האויב זז {movement} מעלות על פני הנוף של השחקן; {required} מעלות נדרשו במרחק זה. עדות: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° זווית לא מוסברת - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"מוּאֲרָק"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"במהלך הירייה המזיקה האחרונה, המטרה קפצה {snap} מעלות ומיד חזרה. ציון: {score}/{threshold} תוך חמש דקות."
 	"evidence.aimbot.latest.convergence"	"במהלך הירייה המזיקה האחרונה, המטרה זזה {snap} מעלות בצעד אחד והמרחק שלה מהאויב ירד מ-{before} ל-{after} מעלות. ציון: {score}/{threshold} תוך חמש דקות."
 	"evidence.aimbot.latest.smooth"	"במהלך הירייה המזיקה האחרונה, המטרה עקבה אחרי עקומת מעלות {snap} נקייה בצורה יוצאת דופן והמרחק שלה מהאויב ירד מ-{before} ל-{after} מעלות. ציון: {score}/{threshold} תוך חמש דקות."
+	"evidence.aimbot.latest.humanized"	"בירייה המזיקה האחרונה, שישה תיקוני כיוון רצופים עקבו אחר מקדם החלקה קבוע של {gain}% לעבר האויב עם התאמה יחסית של {fit}%. ציון: {score}/{threshold} תוך חמש דקות."
 	"evidence.triggerbot.latest"	"השחקן גרם ל־{damage} נזק ל־{hitgroup} של המטרה לאחר {latest_ticks} מרווחי עדכון משחק ממגע חדש; {context}. משבצת השחקן של המטרה: {target}. ציון: {score}/{threshold} בתוך חמש דקות."
 }

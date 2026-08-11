@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° pludselig bevægelse ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° jævn bevægelse ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° menneskeliggjort udjævning (faktor {gain} %, tilpasning {fit} %)"
 	"evidence.aimlock"	"Inden for fem minutter fandt CS2AC {incidents} separate to-sekunders perioder med næsten perfekt fjendesporing. Seneste: Målet forblev inden for fjendens kropsbredde for {precise} af {samples} checks, mens fjenden bevægede sig {movement} grader hen over spillerens udsigt; {required} grader var påkrævet på den afstand. Bevis: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° uforklaret vinkel - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"jordet"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Under det seneste skadelige skud sprang sigtet {snap} grader og vendte straks tilbage. Score: {score}/{threshold} inden for fem minutter."
 	"evidence.aimbot.latest.convergence"	"Under det seneste skadelige skud bevægede sig sigtet {snap} grader i ét trin, og dets afstand fra fjenden faldt fra {before} til {after} grader. Score: {score}/{threshold} inden for fem minutter."
 	"evidence.aimbot.latest.smooth"	"Under det seneste skadelige skud fulgte sigtet en usædvanlig ren {snap} gradkurve, og dens afstand fra fjenden faldt fra {before} til {after} grader. Score: {score}/{threshold} inden for fem minutter."
+	"evidence.aimbot.latest.humanized"	"Under det seneste skadelige skud fulgte seks på hinanden følgende sigtekorrektioner en stabil udjævningsfaktor på {gain} % mod fjenden med {fit} % proportional tilpasning. Score: {score}/{threshold} inden for fem minutter."
 	"evidence.triggerbot.latest"	"Spilleren påførte målets {hitgroup} {damage} skade efter {latest_ticks} spilopdateringsintervaller fra den nye kontakt; {context}. Målspillerens slot: {target}. Score: {score}/{threshold} inden for fem minutter."
 }

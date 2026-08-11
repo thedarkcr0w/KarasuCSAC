@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° movimento improvviso ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° movimento fluido ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° attenuazione umanizzata (fattore {gain}%, aderenza {fit}%)"
 	"evidence.aimlock"	"Nel giro di cinque minuti, CS2AC trovò {incidents} periodi separati di due secondi di tracciamento del nemico quasi perfetto. Ultima novità: la mira è rimasta all'interno della larghezza del corpo del nemico per i controlli {precise} o {samples} mentre il nemico si spostava di {movement} gradi attraverso la visuale del giocatore; A quella distanza erano necessari {required} gradi. Prova: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° angolo inspiegabile - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"a terra"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Durante l'ultimo colpo dannoso, la mira ha fatto un salto di {snap} gradi ed è tornata immediatamente indietro. Punteggio: {score}/{threshold} entro cinque minuti."
 	"evidence.aimbot.latest.convergence"	"Durante l'ultimo colpo dannoso, la mira si è spostata di {snap} gradi in un solo passaggio e la sua distanza dal nemico è scesa da {before} a {after} gradi. Punteggio: {score}/{threshold} entro cinque minuti."
 	"evidence.aimbot.latest.smooth"	"Durante l'ultimo colpo dannoso, la mira ha seguito una curva di gradi {snap} insolitamente pulita e la sua distanza dal nemico è scesa da {before} a {after} gradi. Punteggio: {score}/{threshold} entro cinque minuti."
+	"evidence.aimbot.latest.humanized"	"Durante l'ultimo colpo a segno, sei correzioni consecutive della mira hanno seguito un fattore di attenuazione costante del {gain}% verso il nemico con un'aderenza proporzionale del {fit}%. Punteggio: {score}/{threshold} entro cinque minuti."
 	"evidence.triggerbot.latest"	"Il giocatore ha inflitto {damage} danni al {hitgroup} del bersaglio dopo {latest_ticks} intervalli di aggiornamento del gioco dal nuovo contatto; {context}. Slot del giocatore bersaglio: {target}. Punteggio: {score}/{threshold} entro cinque minuti."
 }

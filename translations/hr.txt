@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° naglo kretanje ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° glatko kretanje ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° humanizirano izglađivanje (faktor {gain}%, podudaranje {fit}%)"
 	"evidence.aimlock"	"U roku od pet minuta, CS2AC je pronašao {incidents} odvojena razdoblja od dvije sekunde gotovo savršenog praćenja neprijatelja. Najnovije: cilj je ostao unutar širine neprijateljevog tijela za {precise} od {samples} provjera dok se neprijatelj pomaknuo za {movement} stupnjeva preko igračevog pogleda; Za tu je udaljenost bilo potrebno stupnjeva {required}. Dokaz: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° neobjašnjiv kut - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"uzemljen"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Tijekom posljednjeg štetnog hica, cilj je skočio {snap} stupnjeva i odmah se vratio. Rezultat: {score}/{threshold} unutar pet minuta."
 	"evidence.aimbot.latest.convergence"	"Tijekom posljednjeg štetnog hica, cilj se pomaknuo za {snap} stupnjeva u jednom koraku, a njegova udaljenost od neprijatelja pala je sa {before} na {after} stupnjeva. Rezultat: {score}/{threshold} unutar pet minuta."
 	"evidence.aimbot.latest.smooth"	"Tijekom posljednjeg štetnog hica, cilj je slijedio neobično čistu krivulju stupnjeva {snap}, a njegova udaljenost od neprijatelja pala je sa {before} na {after} stupnjeva. Rezultat: {score}/{threshold} unutar pet minuta."
+	"evidence.aimbot.latest.humanized"	"Tijekom posljednjeg hica koji je nanio štetu, šest uzastopnih korekcija nišana slijedilo je stalan faktor izglađivanja od {gain}% prema neprijatelju uz {fit}% proporcionalnog podudaranja. Rezultat: {score}/{threshold} unutar pet minuta."
 	"evidence.triggerbot.latest"	"Igrač je nanio {damage} štete u {hitgroup} mete nakon {latest_ticks} intervala ažuriranja igre od novog kontakta; {context}. Utor mete: {target}. Rezultat: {score}/{threshold} unutar pet minuta."
 }

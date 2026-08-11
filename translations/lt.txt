@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° staigus judesys ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° sklandus judesys ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° žmogui pritaikytas glodinimas (koeficientas {gain}%, atitiktis {fit}%)"
 	"evidence.aimlock"	"Per penkias minutes CS2AC rado {incidents} atskirus dviejų sekundžių trukmės beveik tobulo priešo sekimo periodus. Paskutinį kartą: taikinys liko priešo kūno plotyje {precise} ir {samples} patikrinimų metu, o priešas pajudėjo {movement} laipsniais per žaidėjo vaizdą; Tuo atstumu reikėjo {required} laipsnių. Įrodymai: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° nepaaiškinamas kampas - {context} - {points}"
 	"evidence.silentaim.context.grounded"	"įžemintas"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Per paskutinį žalingą šūvį taikinys šoktelėjo {snap} laipsniais ir iškart sugrįžo. Rezultatas: {score}/{threshold} per penkias minutes."
 	"evidence.aimbot.latest.convergence"	"Paskutinio žalingo šūvio metu taikinys vienu žingsniu pasislinko {snap} laipsniais, o jo atstumas nuo priešo sumažėjo nuo {before} iki {after} laipsnių. Rezultatas: {score}/{threshold} per penkias minutes."
 	"evidence.aimbot.latest.smooth"	"Paskutinio žalingo šūvio metu taikymas buvo neįprastai švarus {snap} laipsnių kreivė, o atstumas nuo priešo sumažėjo nuo {before} iki {after} laipsnių. Rezultatas: {score}/{threshold} per penkias minutes."
+	"evidence.aimbot.latest.humanized"	"Per paskutinį žalą padariusį šūvį šešios iš eilės taikymo korekcijos laikėsi pastovaus {gain}% glodinimo koeficiento priešo link su {fit}% proporcine atitiktimi. Rezultatas: {score}/{threshold} per penkias minutes."
 	"evidence.triggerbot.latest"	"Po naujo kontakto praėjus {latest_ticks} žaidimo atnaujinimo intervalų, žaidėjas taikiniui į {hitgroup} padarė {damage} žalos; {context}. Taikinio žaidėjo lizdas: {target}. Rezultatas: {score}/{threshold} per penkias minutes."
 }

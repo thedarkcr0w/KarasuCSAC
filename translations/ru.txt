@@ -15,6 +15,7 @@
 	"evidence.aimbot.snap_return"	"{movement}° snap-return"
 	"evidence.aimbot.convergence"	"{movement}° резкое движение ({before}°→{after}°)"
 	"evidence.aimbot.smooth"	"{movement}° плавное движение ({before}°→{after}°)"
+	"evidence.aimbot.humanized"	"{movement}° гуманизированное сглаживание (коэффициент {gain}%, соответствие {fit}%)"
 	"evidence.aimlock"	"В течение пяти минут CS2AC обнаружил {incidents} отдельные двухсекундные периоды почти идеального отслеживания противника. Последнее: прицел оставался внутри ширины тела противника для проверок {precise} или {samples}, в то время как враг перемещал {movement} на градусы в поле зрения игрока; На таком расстоянии требовалось {required} градусов. Доказательства: {incidents}/{threshold}."
 	"evidence.silentaim"	"{degrees}° необъяснимый угол — {context} — {points}"
 	"evidence.silentaim.context.grounded"	"заземленный"
@@ -125,5 +126,6 @@
 	"evidence.aimbot.latest.snap_return"	"Во время последнего разрушительного выстрела прицел подскочил на {snap} градусов и тут же вернулся обратно. Оценка: {score}/{threshold} в течение пяти минут."
 	"evidence.aimbot.latest.convergence"	"Во время последнего поражающего выстрела прицел за один шаг переместился на {snap} градусов, а расстояние до противника упало с {before} до {after} градусов. Оценка: {score}/{threshold} в течение пяти минут."
 	"evidence.aimbot.latest.smooth"	"Во время последнего разрушительного выстрела прицел следовал по необычно четкой кривой {snap}, а расстояние до противника упало с {before} до {after} градусов. Оценка: {score}/{threshold} в течение пяти минут."
+	"evidence.aimbot.latest.humanized"	"При последнем выстреле с уроном шесть последовательных коррекций прицела следовали постоянному коэффициенту сглаживания {gain}% в сторону противника с пропорциональным соответствием {fit}%. Оценка: {score}/{threshold} в течение пяти минут."
 	"evidence.triggerbot.latest"	"После нового контакта и {latest_ticks} интервалов обновления игры игрок нанес {damage} урона в область {hitgroup} цели; {context}. Слот игрока цели: {target}. Оценка: {score}/{threshold} за пять минут."
 }
