@@ -18,10 +18,21 @@ public:
 	void Test();
 
 	bool IsConfigured() const;
+	bool IsDiscordConfigured() const;
+	bool IsJsonConfigured() const;
+	bool IsDiscordDisabled() const
+	{
+		return discordDisabled;
+	}
+
+	bool IsJsonDisabled() const
+	{
+		return jsonDisabled;
+	}
 
 	bool IsDisabled() const
 	{
-		return disabled;
+		return IsConfigured() && (!IsDiscordConfigured() || discordDisabled) && (!IsJsonConfigured() || jsonDisabled);
 	}
 
 	std::size_t QueueSize() const
@@ -30,6 +41,8 @@ public:
 	}
 
 	static bool IsValidUrl(const char *url);
+	static bool IsValidJsonUrl(const char *url);
+	static bool IsValidBearerToken(const char *token);
 	static bool IsValidRoleId(const char *roleId);
 	static bool IsValidLogoUrl(const char *url);
 
@@ -43,6 +56,12 @@ private:
 		std::string payload;
 		std::uint64_t steamId {};
 		utils::DetectionOutcome outcome {};
+		enum class Delivery : std::uint8_t
+		{
+			Discord,
+			Json,
+		};
+		Delivery delivery {Delivery::Discord};
 		unsigned retries {};
 		bool avatarResolved {};
 	};
@@ -52,17 +71,20 @@ private:
 		None,
 		Avatar,
 		Discord,
+		Json,
 	};
 
 	void SendNext();
 	bool SendAvatarLookup();
 	void OnCompleted(HTTPRequestCompleted_t *result, bool failed);
 	void FinishAvatarLookup(std::string avatarUrl);
-	void Disable(const char *reason);
+	void Disable(ReportData::Delivery delivery, const char *reason);
 	void CancelRequest();
 	void RetryOrDrop(int status);
 	std::string BuildPayload(const ReportData &report);
+	std::string BuildJsonPayload(const ReportData &report);
 	std::string ServerAddress();
+	static const char *DeliveryName(ReportData::Delivery delivery);
 
 	CSteamGameServerAPIContext steamContext;
 	ISteamHTTP *http {};
@@ -72,7 +94,8 @@ private:
 	HTTPRequestHandle request {INVALID_HTTPREQUEST_HANDLE};
 	std::chrono::steady_clock::time_point nextAttempt;
 	RequestKind requestKind {RequestKind::None};
-	bool disabled {};
+	bool discordDisabled {};
+	bool jsonDisabled {};
 	bool overflowWarned {};
 	bool httpUnavailableWarned {};
 };

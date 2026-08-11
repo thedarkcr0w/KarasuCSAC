@@ -10,11 +10,13 @@
 #include <deque>
 #include <string>
 #include <string_view>
+#include <vector>
 
 class IGameEvent;
 class MovementPlayer;
 class PlayerCommand;
 class CMsgTEFireBullets;
+class CMsgPlayerBulletHit;
 
 namespace detection
 {
@@ -29,6 +31,7 @@ namespace detection
 	Vector AimForward(const QAngle &angles);
 	float AngularDistance(const QAngle &first, const QAngle &second);
 	std::string_view NormalizeWeapon(std::string_view weapon);
+	localization::Text FormatEvidenceHistory(const std::vector<localization::Text> &history, const localization::Text &latest);
 
 	struct NetworkSafetyEvidence
 	{
@@ -182,26 +185,34 @@ namespace detection
 
 		ShotRecord *OnWeaponFire(IGameEvent *event, MovementPlayer *player, int currentTick);
 		ShotRecord *OnFireBullets(const CMsgTEFireBullets &event, int currentTick);
+		ShotRecord *OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick);
 		ShotRecord *OnPlayerHurt(IGameEvent *event, MovementPlayer *victim, int currentTick);
 		ShotRecord *OnPlayerDeath(IGameEvent *event, MovementPlayer *victim, int currentTick);
 
 		const PositionFrame *FindFrame(int serverTick) const;
 		const TrackedPosition *FindPosition(int serverTick, int playerIndex) const;
+		const ShotRecord *FindShot(int playerIndex, std::uint64_t shotId) const;
 		std::deque<ShotRecord> &GetShots(int playerIndex);
 
 	private:
-		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick);
+		ShotRecord *MatchEvent(MovementPlayer *player, std::string_view weapon, int currentTick, int victimIndex = -1,
+							   int *compatibleMatches = nullptr);
 		static void AdvanceGeneration(ShotPlayerData &data);
 
 		std::array<ShotPlayerData, MAXPLAYERS + 1> playerData;
 		std::deque<PositionFrame> positionFrames;
 		std::uint64_t nextShotId {1};
+		std::uint64_t bulletHitsMatched {};
+		std::uint64_t bulletHitsUnmatched {};
+		std::uint64_t bulletHitsAmbiguous {};
 	};
 
 	struct DoubletapState
 	{
 		int serverTick {-1};
 		int incidents {};
+		int firstIncidentTicks {-1};
+		Clock::time_point firstIncidentTime;
 		std::string weapon;
 		NetworkSafetyEvidence networkEvidence;
 	};
@@ -241,6 +252,7 @@ namespace detection
 	{
 		Clock::time_point time;
 		int reactionTicks {};
+		TriggerContactMode mode {};
 	};
 
 	struct TriggerbotPlayerData
@@ -282,10 +294,20 @@ namespace detection
 		Clock::time_point smokeStateUnknownUntil;
 	};
 
+	enum class SilentEvidenceContext : std::uint8_t
+	{
+		Grounded,
+		Airborne,
+		Blatant,
+	};
+
 	struct SilentIncident
 	{
 		Clock::time_point time;
 		int points {};
+		int originalPoints {};
+		float unexplainedDegrees {};
+		SilentEvidenceContext context {};
 	};
 
 	// Detects damaging shots whose attack-history angle disagrees with the command's base view angle.
@@ -320,11 +342,47 @@ namespace detection
 	struct AimbotPlayerData
 	{
 		std::deque<AimCommand> commands;
+		Clock::time_point humanizedGainTime;
 		int pendingShot {-1};
+		std::uint64_t pendingShotId {};
 		int victimIndex {-1};
 		int lastCountedIncidentCommand {};
+		float humanizedGain {};
 		bool pending {};
 		bool hasCountedIncident {};
+		bool humanizedGainValid {};
+	};
+
+	enum class AimbotEvidenceType : std::uint8_t
+	{
+		Convergence,
+		SnapReturn,
+		SmoothConvergence,
+		Humanized,
+	};
+
+	struct AimbotIncident
+	{
+		Clock::time_point time;
+		AimbotEvidenceType type {};
+		int points {};
+		float movement {};
+		float before {};
+		float after {};
+		float gain {};
+		float fit {};
+		bool airborne {};
+		bool wallbang {};
+		bool throughSmoke {};
+		bool headshot {};
+		bool noscope {};
+	};
+
+	struct PendingAimbotIncident
+	{
+		std::uint64_t shotId {};
+		int fireTick {-1};
+		AimbotIncident incident;
 	};
 
 	// Detects damaging command-angle snaps that rapidly converge on an enemy.
@@ -342,12 +400,14 @@ namespace detection
 
 	private:
 		bool Evaluate(MovementPlayer *attacker, AimbotPlayerData &data, int currentTick);
+		void FinalizePending(MovementPlayer *attacker, int currentTick);
+		void AddIncident(MovementPlayer *attacker, const PendingAimbotIncident &pending);
 
 		AnnounceCallback announce {};
 		ShotCorrelator *shots {};
 		std::array<AimbotPlayerData, MAXPLAYERS + 1> playerData;
-		std::array<std::deque<Clock::time_point>, MAXPLAYERS + 1> snapEvidence;
-		std::array<std::deque<Clock::time_point>, MAXPLAYERS + 1> smoothEvidence;
+		std::array<std::deque<PendingAimbotIncident>, MAXPLAYERS + 1> pendingEvidence;
+		std::array<std::deque<AimbotIncident>, MAXPLAYERS + 1> evidence;
 	};
 
 	struct AimlockSample
@@ -445,6 +505,17 @@ namespace detection
 		bool simulated {};
 	};
 
+	enum class AntiAimEvidenceType : std::uint8_t
+	{
+		Spin,
+		Jitter,
+		AttackReturn,
+		InconsistentCommand,
+		HistoryMismatch,
+		InvalidAngles,
+		Count,
+	};
+
 	struct AntiAimPlayerData
 	{
 		std::deque<AntiAimCommand> commands;
@@ -455,6 +526,8 @@ namespace detection
 		std::array<float, 3> spinBreakSeconds;
 		float jitterSeconds {};
 		float jitterBreakSeconds {};
+		std::array<int, static_cast<size_t>(AntiAimEvidenceType::Count)> evidenceCounts;
+		std::array<float, static_cast<size_t>(AntiAimEvidenceType::Count)> evidencePoints;
 		int pendingShot {-1};
 		int pendingShotTick {-1};
 		int spinDebugBucket {-1};
@@ -484,8 +557,8 @@ namespace detection
 		void OnClientDisconnect(MovementPlayer *player);
 
 	private:
-		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, float weight, const char *reasonKey, const char *reason, bool continuous,
-						 bool mismatch = false);
+		void AddEvidence(MovementPlayer *player, AntiAimPlayerData &data, AntiAimEvidenceType type, float weight, const char *reasonKey,
+						 const char *reason, bool continuous, bool mismatch = false);
 		void ApplyDecay(MovementPlayer *player, AntiAimPlayerData &data);
 		void EvaluateMotion(MovementPlayer *player, AntiAimPlayerData &data, AntiAimCommand &command);
 		void EvaluatePendingShot(MovementPlayer *player, AntiAimPlayerData &data, int currentTick);
@@ -608,6 +681,7 @@ namespace detection
 		void OnGameFrame(int currentTick);
 		void OnGameEvent(IGameEvent *event, MovementPlayer *player, int currentTick);
 		void OnFireBullets(const CMsgTEFireBullets &event, int currentTick);
+		void OnPlayerBulletHit(const CMsgPlayerBulletHit &event, int currentTick);
 		void OnClientReady(MovementPlayer *player);
 		void OnClientSettingsChanged(MovementPlayer *player);
 		void OnClientDisconnect(MovementPlayer *player);

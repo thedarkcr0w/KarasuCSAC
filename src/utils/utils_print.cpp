@@ -31,6 +31,10 @@ static_function char ConvertColorStringToByte(const char *str, size_t length)
 			{
 				return 8;
 			}
+			if (!V_memcmp(str, "blue", length))
+			{
+				return 12;
+			}
 			break;
 		case 7:
 			if (!V_memcmp(str, "default", length))
@@ -444,13 +448,19 @@ void utils::AnnounceWatermarkTo(CPlayerSlot slot, bool centerOnly)
 	CSingleRecipientFilter filter(slot);
 	if (!centerOnly)
 	{
-		const std::string chatBody = localization::Watermark({{"author", "{grey}%s1{default}"}}).localized;
-		const std::string chatTemplate = inGameChatTag + chatBody;
-		char coloredChat[256];
-		if (CFormat(coloredChat, sizeof(coloredChat), chatTemplate.c_str()))
+		const auto printChat = [&](const std::string &body, const char *param = "")
 		{
-			ClientPrintFilter(&filter, HUD_PRINTTALK, coloredChat, "karola3vax", "", "", "");
-		}
+			const std::string message = inGameChatTag + body;
+			char colored[256];
+			if (CFormat(colored, sizeof(colored), message.c_str()))
+			{
+				ClientPrintFilter(&filter, HUD_PRINTTALK, colored, param, "", "", "");
+			}
+		};
+		printChat(localization::Watermark({{"author", "{grey}%s1{default}"}}).localized, "karola3vax");
+		printChat(localization::Format("announcement.support", "Support development: {blue}{url}{default}",
+									   {{"url", "buymeacoffee.com/karola3vax"}})
+					  .localized);
 		return;
 	}
 

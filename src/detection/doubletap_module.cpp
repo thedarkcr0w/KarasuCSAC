@@ -90,6 +90,12 @@ namespace detection
 
 		previous.serverTick = currentTick;
 		const int incidents = ++previous.incidents;
+		const auto now = Clock::now();
+		if (incidents == 1)
+		{
+			previous.firstIncidentTicks = static_cast<int>(delta);
+			previous.firstIncidentTime = now;
+		}
 		NetworkSafetyEvidence network;
 		if (networkSafety)
 		{
@@ -115,7 +121,11 @@ namespace detection
 		{
 			return;
 		}
+		const int firstTicks = previous.firstIncidentTicks;
+		const float elapsedSeconds = std::chrono::duration<float>(now - previous.firstIncidentTime).count();
 		previous.incidents = 0;
+		previous.firstIncidentTicks = -1;
+		previous.firstIncidentTime = {};
 
 		const auto networkEvidence = previous.networkEvidence;
 		previous.networkEvidence = {};
@@ -123,9 +133,14 @@ namespace detection
 		{
 			if (announceNetworkVeto)
 			{
-				const auto details = localization::Format("evidence.doubletap.network_unstable",
-														  "Three rapid-fire pairs were detected; the latest was {ticks} server ticks apart.",
-														  {{"ticks", tfm::format("%lld", static_cast<long long>(delta))}});
+				const auto details = localization::Format(
+					"evidence.doubletap.network_unstable",
+					"During this connection, the same gun fired twice faster than its normal cycle on {pairs} separate occasions. The first "
+					"pair was {first_ticks} server ticks apart, the latest was {latest_ticks}, and the incidents happened {elapsed} seconds apart.",
+					{{"pairs", tfm::format("%d", detectionThreshold)},
+					 {"first_ticks", tfm::format("%d", firstTicks)},
+					 {"latest_ticks", tfm::format("%lld", static_cast<long long>(delta))},
+					 {"elapsed", tfm::format("%.1f", elapsedSeconds)}});
 				announceNetworkVeto("DOUBLETAP", player, AddNetworkSafetyDetails(details, networkEvidence));
 			}
 			return;
@@ -134,9 +149,15 @@ namespace detection
 		if (announce)
 		{
 			announce("DOUBLETAP", player,
-					 localization::Format(delta == 1 ? "evidence.doubletap.one_tick" : "evidence.doubletap.zero_ticks",
-										  delta == 1 ? "Three rapid-fire pairs reached the threshold; the latest pair was 1 server tick apart."
-													 : "Three rapid-fire pairs reached the threshold; the latest pair was 0 server ticks apart."));
+					 localization::Format(
+						 delta == 1 ? "evidence.doubletap.one_tick" : "evidence.doubletap.zero_ticks",
+						 "During this connection, the same gun fired twice faster than its normal cycle on {pairs} separate occasions. The "
+						 "first pair was {first_ticks} server ticks apart, the latest was {latest_ticks}, and the incidents happened {elapsed} "
+						 "seconds apart.",
+						 {{"pairs", tfm::format("%d", detectionThreshold)},
+						  {"first_ticks", tfm::format("%d", firstTicks)},
+						  {"latest_ticks", tfm::format("%lld", static_cast<long long>(delta))},
+						  {"elapsed", tfm::format("%.1f", elapsedSeconds)}}));
 		}
 	}
 

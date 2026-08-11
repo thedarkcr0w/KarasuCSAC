@@ -251,10 +251,16 @@ namespace detection
 				}
 			}
 			announce("DLL INJECTION", player,
-					 localization::Format(current.count() == 1 ? "evidence.dll_injection.one" : "evidence.dll_injection.many",
-										  current.count() == 1 ? "{count} blacklisted client event subscription found: {events}."
-															   : "{count} blacklisted client event subscriptions found: {events}.",
-										  {{"count", tfm::format("%zu", current.count())}, {"events", matches}}));
+					 localization::Format(
+						 current.count() == 1 ? "evidence.dll_injection.one" : "evidence.dll_injection.many",
+						 current.count() == 1
+							 ? "The player's game was listening for {count} event associated with injected cheats: {events}. This detector "
+							   "checks visible event subscriptions only; it does not scan the player's memory or prove every possible DLL "
+							   "injection."
+							 : "The player's game was listening for {count} events associated with injected cheats: {events}. This detector "
+							   "checks visible event subscriptions only; it does not scan the player's memory or prove every possible DLL "
+							   "injection.",
+						 {{"count", tfm::format("%zu", current.count())}, {"events", matches}}));
 		}
 	}
 

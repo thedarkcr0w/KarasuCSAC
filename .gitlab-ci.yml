@@ -1,0 +1,24 @@
+stages:
+  - package
+
+linux-release-package:
+  stage: package
+  image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk@sha256:2969e5a47146a6494c01d953cd818b1d62712f42f9e54c4809d7a3aa8dc276ce
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends git python3 lld zip
+    - ./bootstrap.sh
+    - export PYTHONPATH="$CI_PROJECT_DIR/.tools/ambuild"
+    - python3 configure.py --enable-optimize --out build-linux-release
+    - python3 -c 'from ambuild2.run import cli_run; cli_run()' build-linux-release
+    - cd build-linux-release/package
+    - zip -qr "$CI_PROJECT_DIR/CS2AC-1.0.18-linux-x64.zip" game
+  artifacts:
+    name: CS2AC-1.0.18-linux-x64
+    paths:
+      - CS2AC-1.0.18-linux-x64.zip
+    expire_in: 30 days

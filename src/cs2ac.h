@@ -11,6 +11,7 @@
 class WebhookService;
 class UpdaterService;
 class CMsgTEFireBullets;
+class CMsgPlayerBulletHit;
 
 class CS2ACPlugin final : public ISmmPlugin, public IMetamodListener
 {
@@ -69,6 +70,7 @@ public:
 	void OnGameFrame(bool simulating);
 	void OnGameEvent(IGameEvent *event, MovementPlayer *player);
 	void OnFireBullets(const CMsgTEFireBullets &event);
+	void OnPlayerBulletHit(const CMsgPlayerBulletHit &event);
 	void HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly = false,
 						 bool networkVetoed = false);
 	void OnClientFullyConnect(CPlayerSlot slot);

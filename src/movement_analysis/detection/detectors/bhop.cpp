@@ -39,8 +39,9 @@ CConVar<bool> cs2ac_hyperscroll_debug("cs2ac_hyperscroll_debug", FCVAR_NONE,
 #define MIN_AIR_TIME_FOR_BHOP    (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Minimum air time to consider a jump for bhop hack detection
 #define BHOP_IGNORE_DURATION     (4.0f * ENGINE_FIXED_TICK_INTERVAL)            // Ignore teleports/noclips in the last 4 ticks
 #define OLD_JUMP_PURGE_THRESHOLD (JUMP_PATTERN_WINDOW * ENGINE_FIXED_TICK_RATE) // Purge jump attempts older than 0.25s
-#define MIN_SAMPLE_COUNT         20                                             // Minimum number of samples before we start checking for bhop hacks
-#define WINDOW_SIZE              30                                             // Number of recent jumps to consider for bhop hack detection
+#define MIN_PATTERN_SAMPLE_COUNT     10 // Minimum completed patterns before repetitive-input detection
+#define MIN_HYPERSCROLL_SAMPLE_COUNT 20 // Minimum completed patterns and eligible landings before hyperscroll detection
+#define WINDOW_SIZE                  30 // Number of recent jumps to consider for bhop hack detection
 // Number of consecutive perfect bhops in the window to trigger a bhop hack infraction, regardless of ratio
 #define NUM_CONSECUTIVE_PERFS_FOR_INFRACTION 10
 // Perfect jumps add one and failed jumps remove one before repetitive input patterns can trigger an infraction.
@@ -131,15 +132,17 @@ void MovementDetectionService::CreateLandEvent()
 	{
 		return;
 	}
+	const f32 completedAirTime = this->currentAirTime;
+	this->currentAirTime = 0.0f;
 	if (!this->ShouldRunDetections())
 	{
 		JUMP_INPUT_DEBUG("%s landing ignored: inherited movement detections are currently unavailable.\n", this->player->GetName());
 		return;
 	}
 	// Check for minimum air time
-	if (this->currentAirTime < MIN_AIR_TIME_FOR_BHOP)
+	if (completedAirTime < MIN_AIR_TIME_FOR_BHOP)
 	{
-		JUMP_INPUT_DEBUG("%s landing ignored: %.4f seconds in air is below the %.4f-second minimum.\n", this->player->GetName(), this->currentAirTime,
+		JUMP_INPUT_DEBUG("%s landing ignored: %.4f seconds in air is below the %.4f-second minimum.\n", this->player->GetName(), completedAirTime,
 						 MIN_AIR_TIME_FOR_BHOP);
 		return;
 	}
@@ -170,8 +173,8 @@ void MovementDetectionService::CreateLandEvent()
 	event.shouldCountTowardsPerfChains =
 		this->player->GetMovementSetting(MOVEMENT_SETTING_SV_JUMP_SPAM_PENALTY_TIME)->m_fl32Value >= ENGINE_FIXED_TICK_INTERVAL;
 	this->bhopDirty = true;
-	JUMP_INPUT_DEBUG("%s accepted landing %zu of %d at command %d: %.4f seconds in air, %u earlier jump presses, chain eligible: %s.\n",
-					 this->player->GetName(), this->recentLandingEvents.size(), MIN_SAMPLE_COUNT, event.cmdNum, this->currentAirTime,
+	JUMP_INPUT_DEBUG("%s accepted landing %zu at command %d: %.4f seconds in air, %u earlier jump presses, chain eligible: %s.\n",
+					 this->player->GetName(), this->recentLandingEvents.size(), event.cmdNum, completedAirTime,
 					 event.numJumpBefore, event.shouldCountTowardsPerfChains ? "yes" : "no");
 }
 
@@ -251,7 +254,7 @@ void MovementDetectionService::CheckLandingEvents()
 	{
 		this->recentLandingEvents.pop_front();
 	}
-	if (this->recentLandingEvents.size() >= MIN_SAMPLE_COUNT)
+	if (this->recentLandingEvents.size() >= NUM_CONSECUTIVE_PERFS_FOR_INFRACTION)
 	{
 		u32 numPerfs = 0;
 		u32 totalChainEligibleEvents = 0;
@@ -315,7 +318,8 @@ void MovementDetectionService::CheckLandingEvents()
 			this->MarkInfraction(
 				MovementDetectionService::Infraction::Type::BhopHack,
 				localization::Format("evidence.bhop.perfect_chain",
-									 "{perfect} of {landings} eligible landings formed one consecutive frame-perfect bhop chain.",
+									 "The player made {perfect} frame-perfect bunny hops in one uninterrupted chain, out of {landings} checked "
+									 "landings.",
 									 {{"perfect", tfm::format("%u", maxPerfChain)}, {"landings", tfm::format("%u", totalChainEligibleEvents)}}));
 			this->recentLandingEvents.clear();
 			this->bhopDirty = false;
@@ -325,7 +329,7 @@ void MovementDetectionService::CheckLandingEvents()
 		// Pattern-based bhop infraction after a decaying perfect-jump score.
 		if (maxPatternPerfScore >= PERF_SCORE_FOR_PATTERN_CHECK)
 		{
-			if (totalPatternOccurrences >= PERF_SCORE_FOR_PATTERN_CHECK
+			if (totalPatternOccurrences >= MIN_PATTERN_SAMPLE_COUNT
 				&& mostCommonPatternCount >= totalPatternOccurrences * REPETITIVE_PATTERN_THRESHOLD && mostCommonPattern < LOW_PATTERN_THRESHOLD
 				&& settings::IsDetectionEnabled(DetectionType::Bhop))
 			{
@@ -333,7 +337,8 @@ void MovementDetectionService::CheckLandingEvents()
 					MovementDetectionService::Infraction::Type::BhopHack,
 					localization::Format(
 						"evidence.bhop.repeated_pattern",
-						"{repeated} of {patterns} completed jump patterns repeated {inputs} inputs, with an average of {average} inputs.",
+						"The player repeated the same short jump-button pattern on {repeated} of {patterns} completed landings. The common "
+						"pattern used {inputs} jump presses around each landing, while the overall average was {average}.",
 						{{"repeated", tfm::format("%u", mostCommonPatternCount)},
 						 {"patterns", tfm::format("%u", totalPatternOccurrences)},
 						 {"inputs", tfm::format("%u", mostCommonPattern)},
@@ -351,14 +356,14 @@ void MovementDetectionService::CheckLandingEvents()
 						  this->player->GetName(), totalPatternOccurrences, averagePattern, numPerfs, totalChainEligibleEvents,
 						  perfectRatio * 100.0f);
 		if (averagePattern >= HIGH_PATTERN_THRESHOLD && perfectRatio > PERF_RATIO_FOR_HYPERSCROLL_INFRACTION
-			&& totalPatternOccurrences >= MIN_SAMPLE_COUNT && totalChainEligibleEvents >= MIN_SAMPLE_COUNT
+			&& totalPatternOccurrences >= MIN_HYPERSCROLL_SAMPLE_COUNT && totalChainEligibleEvents >= MIN_HYPERSCROLL_SAMPLE_COUNT
 			&& settings::IsDetectionEnabled(DetectionType::Hyperscroll))
 		{
 			this->MarkInfraction(
 				MovementDetectionService::Infraction::Type::Hyperscroll,
 				localization::Format("evidence.hyperscroll",
-									 "The player averaged {average} jump inputs across {patterns} completed landing patterns, while {perfect} of "
-									 "{landings} eligible landings were frame-perfect ({ratio}%).",
+									 "Across {patterns} completed landings, the player sent an average of {average} jump presses around each "
+									 "landing. Of {landings} checked landings, {perfect} were frame-perfect ({ratio}%).",
 									 {{"average", tfm::format("%.2f", averagePattern)},
 									  {"patterns", tfm::format("%u", totalPatternOccurrences)},
 									  {"perfect", tfm::format("%u", numPerfs)},

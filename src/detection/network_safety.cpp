@@ -67,8 +67,9 @@ namespace detection
 	{
 		const auto network = localization::Format(
 			"evidence.network_check",
-			"Network check: {ping} ms ping, {jitter} ms jitter, {incoming_loss}/{outgoing_loss}% incoming/outgoing loss, "
-			"{incoming_choke}/{outgoing_choke}% incoming/outgoing choke, {gaps} command gaps, and {unavailable} unavailable samples.",
+			"The five-second network check was not stable enough for punishment. It measured {ping} ms ping, {jitter} ms jitter, "
+			"{incoming_loss}/{outgoing_loss}% incoming/outgoing loss, {incoming_choke}/{outgoing_choke}% incoming/outgoing choke, "
+			"{gaps} command gaps, and {unavailable} unavailable samples.",
 			{{"ping", tfm::format("%.1f", evidence.pingMilliseconds)},
 			 {"jitter", tfm::format("%.1f", evidence.jitterMilliseconds)},
 			 {"incoming_loss", tfm::format("%.1f", evidence.incomingLoss * 100.0f)},

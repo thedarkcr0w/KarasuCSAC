@@ -57,22 +57,23 @@ namespace
 			else if (tick == 2)
 			{
 				++result.twoTickCount;
-				++result.score;
+				result.score = (std::max)(0, result.score - 3);
 			}
 			else if (tick >= 3)
 			{
 				++result.normalCount;
-				result.score = (std::max)(0, result.score - 2);
+				result.score = (std::max)(0, result.score - 3);
 			}
 		}
 		return result;
 	}
 
 	static_assert(ScoreReactions(std::array<int, 5> {0, 1, 0, 1, 0}, 5).score == detectionThreshold);
-	static_assert(ScoreReactions(std::array<int, 10> {2, 2, 2, 2, 2, 2, 2, 2, 2, 2}, 10).score == detectionThreshold);
+	static_assert(ScoreReactions(std::array<int, 10> {2, 2, 2, 2, 2, 2, 2, 2, 2, 2}, 10).score == 0);
 	static_assert(ScoreReactions(std::array<int, 4> {1, 2, 3, 4}, 4).score == 0);
 	static_assert(ScoreReactions(std::array<int, 4> {10, 20, 30, 40}, 4).score == 0);
 	static_assert(ScoreReactions(std::array<int, 3> {3, 3, 1}, 3).score == 2);
+	static_assert(ScoreReactions(std::array<int, 3> {0, 0, 3}, 3).score == 1);
 
 	bool SegmentTouchesSmokeBounds(const Vector &start, const Vector &end, const Vector &center)
 	{
@@ -115,26 +116,33 @@ namespace
 		return mode == detection::TriggerContactMode::AimDriven ? "aim moved onto target" : "held angle / target entered aim";
 	}
 
-	const char *HitGroupName(int group)
+	localization::Text ContactModeText(detection::TriggerContactMode mode)
+	{
+		return mode == detection::TriggerContactMode::AimDriven
+				   ? localization::Format("evidence.triggerbot.context.aim_driven", "the aim moved onto the target")
+				   : localization::Format("evidence.triggerbot.context.target_driven", "the player held an angle and the target entered the aim");
+	}
+
+	localization::Text HitGroupText(int group)
 	{
 		switch (group)
 		{
 			case HITGROUP_HEAD:
-				return "head";
+				return localization::Format("evidence.triggerbot.hitgroup.head", "head");
 			case HITGROUP_CHEST:
-				return "chest";
+				return localization::Format("evidence.triggerbot.hitgroup.chest", "chest");
 			case HITGROUP_STOMACH:
-				return "stomach";
+				return localization::Format("evidence.triggerbot.hitgroup.stomach", "stomach");
 			case HITGROUP_LEFTARM:
 			case HITGROUP_RIGHTARM:
-				return "arm";
+				return localization::Format("evidence.triggerbot.hitgroup.arm", "arm");
 			case HITGROUP_LEFTLEG:
 			case HITGROUP_RIGHTLEG:
-				return "leg";
+				return localization::Format("evidence.triggerbot.hitgroup.leg", "leg");
 			case HITGROUP_NECK:
-				return "neck";
+				return localization::Format("evidence.triggerbot.hitgroup.neck", "neck");
 			default:
-				return "body";
+				return localization::Format("evidence.triggerbot.hitgroup.body", "body");
 		}
 	}
 
@@ -398,7 +406,7 @@ namespace detection
 		{
 			data.history.pop_front();
 		}
-		data.history.push_back({now, candidate.reactionTicks});
+		data.history.push_back({now, candidate.reactionTicks, candidate.mode});
 		while (data.history.size() > historyLimit)
 		{
 			data.history.pop_front();
@@ -418,23 +426,41 @@ namespace detection
 			return;
 		}
 
-		announce("TRIGGERBOT", attacker,
-				 localization::Format(
-					 "evidence.triggerbot",
-					 "The last {shots} damaging fresh-contact shots reached {score}/{threshold}: {one_tick} landed in 0-1 ticks (+2 each), "
-					 "{two_tick} in 2 ticks (+1 each), and {normal} took 3+ ticks (-2 each). Latest: "
-					 "{latest_ticks} ticks, {damage} damage, {context}, {hitgroup}, target #{target}.",
-					 {{"shots", tfm::format("%zu", data.history.size())},
-					  {"score", tfm::format("%d", score.score)},
-					  {"threshold", tfm::format("%d", detectionThreshold)},
-					  {"one_tick", tfm::format("%d", score.oneTickCount)},
-					  {"two_tick", tfm::format("%d", score.twoTickCount)},
-					  {"normal", tfm::format("%d", score.normalCount)},
-					  {"latest_ticks", tfm::format("%d", candidate.reactionTicks)},
-					  {"damage", tfm::format("%d", damage)},
-					  {"context", ContactModeName(candidate.mode)},
-					  {"hitgroup", HitGroupName(event->GetInt("hitgroup", HITGROUP_GENERIC))},
-					  {"target", tfm::format("%d", candidate.targetIndex)}}));
+		const auto context = ContactModeText(candidate.mode);
+		const auto hitgroup = HitGroupText(event->GetInt("hitgroup", HITGROUP_GENERIC));
+		std::vector<localization::Text> history;
+		for (size_t index = 0; index + 1 < data.history.size(); ++index)
+		{
+			const auto &incident = data.history[index];
+			const auto incidentContext = ContactModeText(incident.mode);
+			const int points = incident.reactionTicks >= 0 && incident.reactionTicks <= 1 ? 2 : -3;
+			auto formatLine = [&](const std::string &contextText)
+			{
+				return localization::Format(
+					"evidence.triggerbot", "{ticks} ticks - {context} - {points}",
+					{{"ticks", tfm::format("%d", incident.reactionTicks)}, {"context", contextText}, {"points", tfm::format("%+d", points)}});
+			};
+			const auto englishLine = formatLine(incidentContext.english);
+			const auto localizedLine = formatLine(incidentContext.localized);
+			history.push_back({englishLine.english, localizedLine.localized});
+		}
+		auto formatEvidence = [&](const std::string &contextText, const std::string &hitgroupText)
+		{
+			return localization::Format(
+				"evidence.triggerbot.latest",
+				"The player dealt {damage} damage to the target's {hitgroup} {latest_ticks} game-update intervals after fresh contact, while "
+				"{context}; the target was player slot {target}. Score: {score}/{threshold} within five minutes.",
+				{{"score", tfm::format("%d", score.score)},
+				 {"threshold", tfm::format("%d", detectionThreshold)},
+				 {"latest_ticks", tfm::format("%d", candidate.reactionTicks)},
+				 {"damage", tfm::format("%d", damage)},
+				 {"context", contextText},
+				 {"hitgroup", hitgroupText},
+				 {"target", tfm::format("%d", candidate.targetIndex)}});
+		};
+		const auto englishEvidence = formatEvidence(context.english, hitgroup.english);
+		const auto localizedEvidence = formatEvidence(context.localized, hitgroup.localized);
+		announce("TRIGGERBOT", attacker, FormatEvidenceHistory(history, {englishEvidence.english, localizedEvidence.localized}));
 		data.history.clear();
 	}
 

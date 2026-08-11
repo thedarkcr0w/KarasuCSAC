@@ -185,7 +185,8 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 		this->MarkInfraction(
 			Infraction::Type::InvalidInput,
 			localization::Format("evidence.invalid_input",
-								 "{commands} commands had movement button changes without matching subtick records within {seconds} seconds.",
+								 "Within {seconds} seconds, {commands} commands changed movement buttons without sending the timing records that "
+								 "should explain those changes.",
 								 {{"commands", tfm::format("%zu", this->invalidCommandTimes.size())},
 								  {"seconds", tfm::format("%.1f", SUBTICK_INVALID_COMMAND_WINDOW)}}));
 		this->invalidCommandTimes.clear();
@@ -202,7 +203,8 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 		this->MarkInfraction(
 			Infraction::Type::SubtickSpam,
 			localization::Format("evidence.subtick_spam",
-								 "{commands} commands contained repeated same-time button aliases with angle changes within {seconds} seconds.",
+								 "Within {seconds} seconds, {commands} commands packed repeated movement changes and view-angle changes into the "
+								 "exact same moment.",
 								 {{"commands", tfm::format("%zu", this->suspiciousSubtickMoveTimes.size())},
 								  {"seconds", tfm::format("%.1f", SUBTICK_SUSPICIOUS_MOVES_WINDOW)}}));
 		this->suspiciousSubtickMoveTimes.clear();
@@ -224,7 +226,9 @@ void MovementDetectionService::CheckSuspiciousSubtickCommands()
 		if (ratio >= SUBTICK_ZERO_WHEN_RATIO_THRESHOLD)
 		{
 			localization::Text details =
-				localization::Format("evidence.desubticking", "{zero} of {commands} commands with subtick input had zero timing ({ratio}%).",
+				localization::Format("evidence.desubticking",
+									 "The player repeatedly sent movement inputs with their normal between-tick timing removed. Of {commands} "
+									 "checked movement commands, {zero} had their timing set to zero ({ratio}%).",
 									 {{"zero", tfm::format("%zu", this->zeroWhenCommandTimes.size())},
 									  {"commands", tfm::format("%zu", this->numCommandsWithSubtickInputs.size())},
 									  {"ratio", tfm::format("%.1f", ratio * 100.0f)}});

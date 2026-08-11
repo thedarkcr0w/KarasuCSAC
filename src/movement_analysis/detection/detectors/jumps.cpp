@@ -146,7 +146,9 @@ void MovementDetectionService::OnJumpFinish(Jump *jump)
 	{
 		const size_t evaluatedJumpCount = this->recentJumpStatuses.size();
 		localization::Text details = localization::Format(
-			"evidence.autostrafe.jumps", "{suspicious} of {evaluated} evaluated jumps matched automated strafe patterns ({ratio}%).",
+			"evidence.autostrafe.jumps",
+			"Of the latest {evaluated} valid jumps, {suspicious} showed air-strafing speed or efficiency patterns associated with "
+			"automation ({ratio}%).",
 			{{"suspicious", tfm::format("%d", suspiciousJumpCount)},
 			 {"evaluated", tfm::format("%zu", evaluatedJumpCount)},
 			 {"ratio", tfm::format("%.2f", (f32)suspiciousJumpCount / (f32)evaluatedJumpCount * 100.0f)}});

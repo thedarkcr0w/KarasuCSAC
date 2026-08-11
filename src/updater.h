@@ -22,14 +22,22 @@ private:
 		Package,
 	};
 
-	void CheckRelease();
+	enum class UpdateSource
+	{
+		GitHub,
+		GitLab,
+	};
+
+	void CheckRelease(UpdateSource source = UpdateSource::GitHub);
 	void DownloadPackage();
 	void OnCompleted(HTTPRequestCompleted_t *result, bool failed);
 	void CancelRequest();
+	void TryGitLab(const char *reason);
 	void RetryLater(const char *reason);
 	bool ReadResponse(std::vector<std::uint8_t> &body, std::uint32_t maximumSize) const;
-	bool SelectRelease(const std::vector<std::uint8_t> &body);
-	bool StagePackage(const std::vector<std::uint8_t> &body);
+	bool ReadGitLabPackageMetadata();
+	bool SelectRelease(const std::vector<std::uint8_t> &body, UpdateSource source);
+	bool StagePackage(const std::vector<std::uint8_t> &body, std::string &failureReason);
 
 	CSteamGameServerAPIContext steamContext;
 	ISteamHTTP *http {};
@@ -37,6 +45,7 @@ private:
 	HTTPRequestHandle request {INVALID_HTTPREQUEST_HANDLE};
 	std::chrono::steady_clock::time_point nextCheck;
 	RequestKind requestKind {RequestKind::None};
+	UpdateSource updateSource {UpdateSource::GitHub};
 	std::string updateVersion;
 	std::string downloadUrl;
 	std::string expectedDigest;

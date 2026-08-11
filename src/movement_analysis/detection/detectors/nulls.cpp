@@ -540,13 +540,15 @@ void MovementDetectionService::AnalyzeNullsForAxis(const std::deque<InputEvent> 
 		const std::string localizedAxis =
 			localization::Get(button1 == IN_FORWARD ? "evidence.nulls.axis.forward_backward" : "evidence.nulls.axis.left_right", axis);
 		localization::Text details {
-			tinyformat::format("The %s inputs reached a perfect-timing score of %u; %u was required. "
-							   "Median release-to-press gap: %.2f ms; overlap score: %u; measured FPS: %.2f.",
+			tinyformat::format("While airborne, the player repeatedly switched between opposite %s inputs with machine-perfect timing. The timing "
+							   "score reached %u; %u was required at the measured frame rate. The median delay between releasing one key and "
+							   "pressing the other was %.2f ms, with %u overlapping switches at %.2f FPS.",
 							   axis, maxConsecutivePerfect, adjustedRequiredPerfectCstrafes, underlapMedian * 1000, numOverlaps, 1 / medianFramerate),
 			localization::Format(
 				"evidence.nulls",
-				"The {axis} inputs reached a perfect-timing score of {score}; {required} was required. Median release-to-press gap: {gap} ms; "
-				"overlap score: {overlaps}; measured FPS: {fps}.",
+				"While airborne, the player repeatedly switched between opposite {axis} inputs with machine-perfect timing. The timing "
+				"score reached {score}; {required} was required at the measured frame rate. The median delay between releasing one key "
+				"and pressing the other was {gap} ms, with {overlaps} overlapping switches at {fps} FPS.",
 				{{"axis", localizedAxis},
 				 {"score", tfm::format("%u", maxConsecutivePerfect)},
 				 {"required", tfm::format("%u", adjustedRequiredPerfectCstrafes)},

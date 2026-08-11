@@ -419,6 +419,10 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 	{
 		missing.emplace_back("The exact weapon firing data used by Silentaim is unavailable.");
 	}
+	if (g_pNetworkMessages && !g_pNetworkMessages->FindNetworkMessageById(GE_PlayerBulletHitId))
+	{
+		missing.emplace_back("The exact bullet-hit context used by Aimbot is unavailable.");
+	}
 	if (g_pCVar)
 	{
 		movement_settings::Validate(missing);
@@ -553,6 +557,7 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 		hooks::HookActivePlayers();
 	}
 	Msg("[CS2AC] CS2AC %s loaded successfully. Waiting for cs2ac.cfg to finish.\n", PLUGIN_FULL_VERSION);
+	Msg("[CS2AC] Support development: buymeacoffee.com/karola3vax\n");
 	return true;
 }
 
@@ -655,6 +660,12 @@ void CS2ACPlugin::OnFireBullets(const CMsgTEFireBullets &event)
 	detectionSystem.OnFireBullets(event, globals ? globals->tickcount : 0);
 }
 
+void CS2ACPlugin::OnPlayerBulletHit(const CMsgPlayerBulletHit &event)
+{
+	auto *globals = g_pCS2ACUtils->GetServerGlobals();
+	detectionSystem.OnPlayerBulletHit(event, globals ? globals->tickcount : 0);
+}
+
 void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player, const localization::Text &evidence, bool kickOnly,
 								  bool networkVetoed)
 {
@@ -680,6 +691,10 @@ void CS2ACPlugin::HandleDetection(const char *detection, MovementPlayer *player,
 	else
 	{
 		Msg("[CS2AC] Detected %s on %s (SteamID64 unavailable).\n", detection, playerName.c_str());
+	}
+	if (!evidence.english.empty())
+	{
+		Msg("[CS2AC] Evidence: %s\n", SanitizeConsoleText(evidence.english.c_str()).c_str());
 	}
 	if (networkVetoed)
 	{
@@ -911,7 +926,7 @@ void CS2ACPlugin::OnClientFullyConnect(CPlayerSlot slot)
 	if (player && index > 0 && index <= MAXPLAYERS && !player->IsFakeClient() && !player->IsCSTV() && !joinWatermarks[index].shown
 		&& !joinWatermarks[index].pending)
 	{
-		joinWatermarks[index].showAt = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+		joinWatermarks[index].showAt = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 		joinWatermarks[index].pending = true;
 	}
 }
@@ -1024,7 +1039,9 @@ void CS2ACPlugin::PrintConfigSummary(bool reloaded) const
 		settings::GetPunishmentCommand() && *settings::GetPunishmentCommand() ? "configured" : "disabled",
 		settings::GetKickCommand() && *settings::GetKickCommand() ? "configured" : "disabled");
 	Msg("[CS2AC] Discord webhook: %s.\n",
-		webhook && webhook->IsConfigured() ? (webhook->IsDisabled() ? "disabled after an error" : "configured") : "not configured");
+		webhook && webhook->IsDiscordConfigured() ? (webhook->IsDiscordDisabled() ? "disabled after an error" : "configured") : "not configured");
+	Msg("[CS2AC] JSON webhook: %s.\n",
+		webhook && webhook->IsJsonConfigured() ? (webhook->IsJsonDisabled() ? "disabled after an error" : "configured") : "not configured");
 }
 
 void CS2ACPlugin::PrintHelp() const
@@ -1034,7 +1051,7 @@ void CS2ACPlugin::PrintHelp() const
 	Msg("[CS2AC] cs2ac_reload - Reload cs2ac.cfg and clear transient detector evidence when it finishes.\n");
 	Msg("[CS2AC] cs2ac_check_config - Check the current settings without changing them.\n");
 	Msg("[CS2AC] cs2ac_test_announcement - Show a harmless chat and center-screen test without punishing anyone.\n");
-	Msg("[CS2AC] cs2ac_webhook_test - Send a harmless Discord test report.\n");
+	Msg("[CS2AC] cs2ac_webhook_test - Send a harmless test report to each configured webhook.\n");
 	Msg("[CS2AC] cs2ac_karasu_test_report [detection] - Emit one synthetic Karasu relay report to check the relay end to end.\n");
 }
 
@@ -1143,6 +1160,16 @@ void CS2ACPlugin::CheckConfig() const
 	if (!WebhookService::IsValidUrl(settings::GetWebhookUrl()))
 	{
 		Msg("[CS2AC] Review cs2ac_webhook_url: it is not a Discord webhook URL.\n");
+		++findings;
+	}
+	if (!WebhookService::IsValidJsonUrl(settings::GetJsonWebhookUrl()))
+	{
+		Msg("[CS2AC] Review cs2ac_json_webhook_url: it must be an HTTPS URL.\n");
+		++findings;
+	}
+	if (!WebhookService::IsValidBearerToken(settings::GetJsonWebhookBearerToken()))
+	{
+		Msg("[CS2AC] Review cs2ac_json_webhook_bearer_token: it must not contain whitespace and must be 4096 characters or shorter.\n");
 		++findings;
 	}
 	if (!WebhookService::IsValidRoleId(settings::GetWebhookRoleId()))
@@ -1334,9 +1361,12 @@ void CS2ACPlugin::PrintStatus() const
 		static_cast<unsigned long long>(karasu::relay::DroppedCount()), static_cast<unsigned long long>(karasu::relay::TruncatedCount()));
 	const size_t webhookQueueSize = webhook ? webhook->QueueSize() : 0;
 	Msg("[CS2AC] Discord webhook: %s, %zu queued report%s.\n",
-		webhook && webhook->IsConfigured() ? (webhook->IsDisabled() ? "disabled after an error" : "configured") : "not configured", webhookQueueSize,
-		webhookQueueSize == 1 ? "" : "s");
+		webhook && webhook->IsDiscordConfigured() ? (webhook->IsDiscordDisabled() ? "disabled after an error" : "configured") : "not configured",
+		webhookQueueSize, webhookQueueSize == 1 ? "" : "s");
+	Msg("[CS2AC] JSON webhook: %s.\n",
+		webhook && webhook->IsJsonConfigured() ? (webhook->IsJsonDisabled() ? "disabled after an error" : "configured") : "not configured");
 	Msg("[CS2AC] sv_cheats testing: %s.\n", MovementDetectionService::IsSvCheatsTestingAllowed() ? "allowed" : "not allowed");
+	Msg("[CS2AC] Support development: buymeacoffee.com/karola3vax\n");
 }
 
 void CS2ACPlugin::ResetRuntime()

@@ -190,10 +190,15 @@ namespace detection
 		if (announce)
 		{
 			announce("INHUMAN ACCURACY", player,
-					 localization::Format("evidence.inhuman_accuracy", "{hits} of {attempts} qualifying shots hit ({accuracy}% accuracy).",
+					 localization::Format("evidence.inhuman_accuracy",
+										  "CS2AC counted {attempts} shots fired while the crosshair was already inside a player-sized area around an "
+										  "enemy at least {distance} game units away. {hits} dealt damage ({accuracy}% accuracy); {required}% was "
+										  "required.",
 										  {{"hits", tfm::format("%d", hits)},
 										   {"attempts", tfm::format("%d", attempts)},
-										   {"accuracy", tfm::format("%.1f", attempts ? hits * 100.0 / attempts : 0.0)}}));
+										   {"accuracy", tfm::format("%.1f", attempts ? hits * 100.0 / attempts : 0.0)},
+										   {"distance", tfm::format("%.0f", minimumDistance)},
+										   {"required", tfm::format("%d", requiredAccuracyPercent)}}));
 		}
 		data.evidence.clear();
 	}

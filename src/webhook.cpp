@@ -6,6 +6,7 @@
 #include "utils/utils.h"
 #include "version_gen.h"
 
+#include <algorithm>
 #include <charconv>
 #include <ctime>
 #include <iomanip>
@@ -75,17 +76,49 @@ namespace
 		return result;
 	}
 
+	constexpr std::size_t Utf8Characters(std::string_view value)
+	{
+		std::size_t result = 0;
+		for (const unsigned char character : value)
+		{
+			result += (character & 0xc0) != 0x80;
+		}
+		return result;
+	}
+
+	constexpr std::size_t Utf8PrefixBytes(std::string_view value, std::size_t maximumCharacters)
+	{
+		std::size_t characters = 0;
+		for (std::size_t byte = 0; byte < value.size(); ++byte)
+		{
+			if ((static_cast<unsigned char>(value[byte]) & 0xc0) != 0x80 && characters++ == maximumCharacters)
+			{
+				return byte;
+			}
+		}
+		return value.size();
+	}
+
+	static_assert(Utf8Characters("A\xc3\xbc"
+								 "B")
+				  == 3);
+	static_assert(Utf8PrefixBytes("A\xc3\xbc"
+								  "B",
+								  2)
+				  == 3);
+
 	std::string Limit(std::string value, std::size_t maximum)
 	{
-		if (value.size() <= maximum)
+		const std::size_t characters = Utf8Characters(value);
+		if (characters <= maximum)
 		{
 			return value;
 		}
-		value.resize(maximum - 3);
-		while (!value.empty() && (static_cast<unsigned char>(value.back()) & 0xc0) == 0x80)
+		if (maximum <= 3)
 		{
-			value.pop_back();
+			return std::string(maximum, '.');
 		}
+		value.resize(Utf8PrefixBytes(value, maximum - 3));
 		value += "...";
 		return value;
 	}
@@ -116,6 +149,30 @@ namespace
 										 "No punishment was sent because the player's connection exceeded the safe network limits.");
 		}
 		return localization::Get("webhook.outcome.unavailable", "No punishment outcome was available.");
+	}
+
+	const char *OutcomeCode(utils::DetectionOutcome outcome)
+	{
+		switch (outcome)
+		{
+			case utils::DetectionOutcome::PunishmentSent:
+				return "punishment_sent";
+			case utils::DetectionOutcome::Whitelisted:
+				return "whitelisted";
+			case utils::DetectionOutcome::PunishmentDisabled:
+				return "punishment_disabled";
+			case utils::DetectionOutcome::IdentityUnavailable:
+				return "identity_unavailable";
+			case utils::DetectionOutcome::AlreadyPunished:
+				return "already_punished";
+			case utils::DetectionOutcome::CommandTooLong:
+				return "command_too_long";
+			case utils::DetectionOutcome::CommandServiceUnavailable:
+				return "command_service_unavailable";
+			case utils::DetectionOutcome::NetworkUnstable:
+				return "network_unstable";
+		}
+		return "unavailable";
 	}
 
 	std::string CompleteSentence(std::string value)
@@ -193,6 +250,27 @@ bool WebhookService::IsValidUrl(const char *url)
 		   && value.find_first_of(" \t\r\n") == std::string_view::npos;
 }
 
+bool WebhookService::IsValidJsonUrl(const char *url)
+{
+	if (!url || !*url)
+	{
+		return true;
+	}
+	const std::string_view value(url);
+	constexpr std::string_view prefix = "https://";
+	return value.size() > prefix.size() && value.substr(0, prefix.size()) == prefix && value.find_first_of(" \t\r\n") == std::string_view::npos;
+}
+
+bool WebhookService::IsValidBearerToken(const char *token)
+{
+	if (!token || !*token)
+	{
+		return true;
+	}
+	const std::string_view value(token);
+	return value.size() <= 4096 && value.find_first_of(" \t\r\n") == std::string_view::npos;
+}
+
 bool WebhookService::IsValidRoleId(const char *roleId)
 {
 	if (!roleId || !*roleId)
@@ -216,8 +294,24 @@ bool WebhookService::IsValidLogoUrl(const char *url)
 
 bool WebhookService::IsConfigured() const
 {
+	return IsDiscordConfigured() || IsJsonConfigured();
+}
+
+bool WebhookService::IsDiscordConfigured() const
+{
 	const char *url = settings::GetWebhookUrl();
 	return url && *url;
+}
+
+bool WebhookService::IsJsonConfigured() const
+{
+	const char *url = settings::GetJsonWebhookUrl();
+	return url && *url;
+}
+
+const char *WebhookService::DeliveryName(ReportData::Delivery delivery)
+{
+	return delivery == ReportData::Delivery::Json ? "JSON webhook" : "Discord webhook";
 }
 
 void WebhookService::Reload()
@@ -225,7 +319,8 @@ void WebhookService::Reload()
 	CancelRequest();
 	queue.clear();
 	avatarCache.clear();
-	disabled = false;
+	discordDisabled = false;
+	jsonDisabled = false;
 	overflowWarned = false;
 	httpUnavailableWarned = false;
 	nextAttempt = {};
@@ -235,18 +330,23 @@ void WebhookService::Reload()
 	}
 	if (!IsValidUrl(settings::GetWebhookUrl()))
 	{
-		Disable("cs2ac_webhook_url is not a Discord webhook URL.");
-		return;
+		Disable(ReportData::Delivery::Discord, "cs2ac_webhook_url is not a Discord webhook URL.");
+	}
+	if (!IsValidJsonUrl(settings::GetJsonWebhookUrl()))
+	{
+		Disable(ReportData::Delivery::Json, "cs2ac_json_webhook_url must be an HTTPS URL.");
+	}
+	if (!IsValidBearerToken(settings::GetJsonWebhookBearerToken()))
+	{
+		Disable(ReportData::Delivery::Json, "cs2ac_json_webhook_bearer_token must not contain whitespace and must be 4096 characters or shorter.");
 	}
 	if (!IsValidRoleId(settings::GetWebhookRoleId()))
 	{
-		Disable("cs2ac_webhook_role_id must contain only numbers.");
-		return;
+		Disable(ReportData::Delivery::Discord, "cs2ac_webhook_role_id must contain only numbers.");
 	}
 	if (!IsValidLogoUrl(settings::GetWebhookLogoUrl()))
 	{
-		Disable("cs2ac_webhook_logo_url must be an HTTPS URL.");
-		return;
+		Disable(ReportData::Delivery::Discord, "cs2ac_webhook_logo_url must be an HTTPS URL.");
 	}
 }
 
@@ -257,7 +357,8 @@ void WebhookService::Unload()
 	avatarCache.clear();
 	http = nullptr;
 	steamContext.Clear();
-	disabled = false;
+	discordDisabled = false;
+	jsonDisabled = false;
 	overflowWarned = false;
 	httpUnavailableWarned = false;
 	nextAttempt = {};
@@ -276,61 +377,86 @@ void WebhookService::CancelRequest()
 
 void WebhookService::Report(const char *detection, MovementPlayer *player, std::string_view evidence, utils::DetectionOutcome outcome)
 {
-	if (!IsConfigured() || disabled || !detection || !player)
+	if (!IsConfigured() || !detection || !player || ((!IsDiscordConfigured() || discordDisabled) && (!IsJsonConfigured() || jsonDisabled)))
 	{
 		return;
 	}
-	if (queue.size() >= maximumQueueSize)
-	{
-		queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
-		if (!overflowWarned)
+	auto enqueue = [this](ReportData report) {
+		if (queue.size() >= maximumQueueSize)
 		{
-			Msg("[CS2AC] The Discord webhook queue filled up. The oldest report was dropped so gameplay stays unaffected.\n");
-			overflowWarned = true;
+			queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
+			if (!overflowWarned)
+			{
+				Msg("[CS2AC] The webhook queue filled up. The oldest report was dropped so gameplay stays unaffected.\n");
+				overflowWarned = true;
+			}
 		}
-	}
-	ReportData report;
-	report.detection = detection;
-	report.playerName = player->GetName() ? player->GetName() : localization::Get("webhook.unknown_player", "Unknown player");
-	report.evidence = evidence;
-	report.steamId = player->GetSteamId64(false);
-	report.outcome = outcome;
-	const auto cachedAvatar = avatarCache.find(report.steamId);
-	if (!report.steamId || cachedAvatar != avatarCache.end())
-	{
-		report.avatarResolved = true;
-		if (cachedAvatar != avatarCache.end())
+		queue.push_back(std::move(report));
+	};
+	auto makeReport = [&](ReportData::Delivery delivery) {
+		ReportData report;
+		report.delivery = delivery;
+		report.detection = detection;
+		report.playerName = player->GetName() ? player->GetName() : localization::Get("webhook.unknown_player", "Unknown player");
+		report.evidence = evidence;
+		report.steamId = player->GetSteamId64(false);
+		report.outcome = outcome;
+		const auto cachedAvatar = avatarCache.find(report.steamId);
+		if (delivery == ReportData::Delivery::Json || !report.steamId || cachedAvatar != avatarCache.end())
 		{
-			report.avatarUrl = cachedAvatar->second;
+			report.avatarResolved = true;
+			if (cachedAvatar != avatarCache.end())
+			{
+				report.avatarUrl = cachedAvatar->second;
+			}
 		}
+		enqueue(std::move(report));
+	};
+	if (IsDiscordConfigured() && !discordDisabled)
+	{
+		makeReport(ReportData::Delivery::Discord);
 	}
-	queue.push_back(std::move(report));
+	if (IsJsonConfigured() && !jsonDisabled)
+	{
+		makeReport(ReportData::Delivery::Json);
+	}
 }
 
 void WebhookService::Test()
 {
 	if (!IsConfigured())
 	{
-		Msg("[CS2AC] The Discord webhook test was not sent because cs2ac_webhook_url is empty.\n");
+		Msg("[CS2AC] The webhook test was not sent because no webhook URL is configured.\n");
 		return;
 	}
-	if (disabled)
+	if ((!IsDiscordConfigured() || discordDisabled) && (!IsJsonConfigured() || jsonDisabled))
 	{
-		Msg("[CS2AC] The Discord webhook is disabled after an error. Fix it and run cs2ac_reload before testing again.\n");
+		Msg("[CS2AC] All configured webhooks are disabled after an error. Fix them and run cs2ac_reload before testing again.\n");
 		return;
 	}
-	if (queue.size() >= maximumQueueSize)
+	const auto enqueue = [this](ReportData::Delivery delivery) {
+		if (queue.size() >= maximumQueueSize)
+		{
+			queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
+		}
+		ReportData report;
+		report.delivery = delivery;
+		report.detection = localization::Get("webhook.test_detection", "WEBHOOK TEST");
+		report.playerName = localization::Get("webhook.test_player", "Webhook test");
+		report.evidence = localization::Get("webhook.test_evidence", "This is a harmless test report. No detection or punishment was created.");
+		report.outcome = utils::DetectionOutcome::PunishmentDisabled;
+		report.avatarResolved = true;
+		queue.push_back(std::move(report));
+	};
+	if (IsDiscordConfigured() && !discordDisabled)
 	{
-		queue.erase(queue.begin() + (request == INVALID_HTTPREQUEST_HANDLE ? 0 : 1));
+		enqueue(ReportData::Delivery::Discord);
 	}
-	ReportData report;
-	report.detection = localization::Get("webhook.test_detection", "WEBHOOK TEST");
-	report.playerName = localization::Get("webhook.test_player", "Webhook test");
-	report.evidence = localization::Get("webhook.test_evidence", "This is a harmless test report. No detection or punishment was created.");
-	report.outcome = utils::DetectionOutcome::PunishmentDisabled;
-	report.avatarResolved = true;
-	queue.push_back(std::move(report));
-	Msg("[CS2AC] The Discord webhook test was queued.\n");
+	if (IsJsonConfigured() && !jsonDisabled)
+	{
+		enqueue(ReportData::Delivery::Json);
+	}
+	Msg("[CS2AC] The configured webhook test report(s) were queued.\n");
 }
 
 void WebhookService::OnGameFrame()
@@ -349,7 +475,7 @@ void WebhookService::SendNext()
 		{
 			if (!httpUnavailableWarned)
 			{
-				Msg("[CS2AC] Discord reports are waiting because Steam's HTTP service is not ready yet.\n");
+				Msg("[CS2AC] Webhook reports are waiting because Steam's HTTP service is not ready yet.\n");
 				httpUnavailableWarned = true;
 			}
 			nextAttempt = std::chrono::steady_clock::now() + std::chrono::seconds(5);
@@ -358,7 +484,7 @@ void WebhookService::SendNext()
 		httpUnavailableWarned = false;
 	}
 
-	if (!queue.front().avatarResolved)
+	if (queue.front().delivery == ReportData::Delivery::Discord && !queue.front().avatarResolved)
 	{
 		const auto cachedAvatar = avatarCache.find(queue.front().steamId);
 		if (cachedAvatar != avatarCache.end())
@@ -373,17 +499,27 @@ void WebhookService::SendNext()
 	}
 	if (queue.front().payload.empty())
 	{
-		queue.front().payload = BuildPayload(queue.front());
+		queue.front().payload = queue.front().delivery == ReportData::Delivery::Json ? BuildJsonPayload(queue.front()) : BuildPayload(queue.front());
 	}
 
-	std::string url = settings::GetWebhookUrl();
-	url += url.find('?') == std::string::npos ? "?wait=true" : "&wait=true";
+	const bool json = queue.front().delivery == ReportData::Delivery::Json;
+	std::string url = json ? settings::GetJsonWebhookUrl() : settings::GetWebhookUrl();
+	if (!json)
+	{
+		url += url.find('?') == std::string::npos ? "?wait=true" : "&wait=true";
+	}
 	request = http->CreateHTTPRequest(k_EHTTPMethodPOST, url.c_str());
+	const std::string authorization =
+		json && settings::GetJsonWebhookBearerToken() && *settings::GetJsonWebhookBearerToken()
+			? tfm::format("Bearer %s", settings::GetJsonWebhookBearerToken())
+			: "";
 	if (request == INVALID_HTTPREQUEST_HANDLE
 		|| !http->SetHTTPRequestRawPostBody(request, "application/json", reinterpret_cast<uint8 *>(queue.front().payload.data()),
-											static_cast<uint32>(queue.front().payload.size()))
+										static_cast<uint32>(queue.front().payload.size()))
+		|| (!authorization.empty() && !http->SetHTTPRequestHeaderValue(request, "Authorization", authorization.c_str()))
 		|| !http->SetHTTPRequestNetworkActivityTimeout(request, 5) || !http->SetHTTPRequestAbsoluteTimeoutMS(request, 10000)
-		|| !http->SetHTTPRequestRequiresVerifiedCertificate(request, true))
+		|| !http->SetHTTPRequestRequiresVerifiedCertificate(request, true)
+		|| (json && !http->SetHTTPRequestUserAgentInfo(request, "CS2AC-JSON-Webhook")))
 	{
 		if (request != INVALID_HTTPREQUEST_HANDLE)
 		{
@@ -402,7 +538,7 @@ void WebhookService::SendNext()
 		RetryOrDrop(0);
 		return;
 	}
-	requestKind = RequestKind::Discord;
+	requestKind = json ? RequestKind::Json : RequestKind::Discord;
 	callResult.SetGameserverFlag();
 	callResult.Set(call, this, &WebhookService::OnCompleted);
 }
@@ -466,6 +602,7 @@ void WebhookService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 	}
 
 	const auto now = std::chrono::steady_clock::now();
+	const auto delivery = queue.empty() ? ReportData::Delivery::Discord : queue.front().delivery;
 	double retrySeconds = 1.0;
 	if (status == 429)
 	{
@@ -494,7 +631,7 @@ void WebhookService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 	}
 	else if (status == 401 || status == 403 || status == 404)
 	{
-		Disable("Discord rejected the webhook. It may be invalid or deleted.");
+		Disable(delivery, tfm::format("%s rejected the endpoint. It may be invalid or deleted.", DeliveryName(delivery)).c_str());
 	}
 	else if (!queue.empty() && queue.front().retries++ == 0)
 	{
@@ -502,7 +639,7 @@ void WebhookService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 	}
 	else
 	{
-		Msg("[CS2AC] A Discord webhook report failed after one retry and was dropped (HTTP %d).\n", status);
+		Msg("[CS2AC] A %s report failed after one retry and was dropped (HTTP %d).\n", DeliveryName(delivery), status);
 		queue.pop_front();
 		nextAttempt = {};
 	}
@@ -534,7 +671,9 @@ void WebhookService::RetryOrDrop(int status)
 		nextAttempt = std::chrono::steady_clock::now() + std::chrono::seconds(2);
 		return;
 	}
-	Msg("[CS2AC] A Discord webhook report failed after one retry and was dropped%s.\n", status ? tfm::format(" (HTTP %d)", status).c_str() : "");
+	const auto delivery = queue.empty() ? ReportData::Delivery::Discord : queue.front().delivery;
+	Msg("[CS2AC] A %s report failed after one retry and was dropped%s.\n", DeliveryName(delivery),
+		status ? tfm::format(" (HTTP %d)", status).c_str() : "");
 	if (!queue.empty())
 	{
 		queue.pop_front();
@@ -542,11 +681,18 @@ void WebhookService::RetryOrDrop(int status)
 	nextAttempt = {};
 }
 
-void WebhookService::Disable(const char *reason)
+void WebhookService::Disable(ReportData::Delivery delivery, const char *reason)
 {
-	disabled = true;
-	queue.clear();
-	Msg("[CS2AC] Discord webhook reports are disabled until the next cs2ac_reload. %s\n", reason);
+	if (delivery == ReportData::Delivery::Json)
+	{
+		jsonDisabled = true;
+	}
+	else
+	{
+		discordDisabled = true;
+	}
+	queue.erase(std::remove_if(queue.begin(), queue.end(), [delivery](const ReportData &report) { return report.delivery == delivery; }), queue.end());
+	Msg("[CS2AC] %s reports are disabled until the next cs2ac_reload. %s\n", DeliveryName(delivery), reason);
 }
 
 std::string WebhookService::ServerAddress()
@@ -627,4 +773,27 @@ std::string WebhookService::BuildPayload(const ReportData &report)
 		JsonEscape(localization::Get("webhook.field.punishment", "Punishment")), JsonEscape(OutcomeText(report.outcome)),
 		JsonEscape(localization::Get("webhook.field.map", "Map")), JsonEscape(Limit(map, 256)), addressField, UtcTimestamp(), JsonEscape(footer),
 		footerIcon);
+}
+
+std::string WebhookService::BuildJsonPayload(const ReportData &report)
+{
+	const auto *globals = g_pCS2ACUtils ? g_pCS2ACUtils->GetServerGlobals() : nullptr;
+	const std::string map =
+		globals && globals->mapname.ToCStr() ? globals->mapname.ToCStr() : localization::Get("webhook.unavailable", "Unavailable");
+	const std::string server = ConVarString("hostname", localization::Get("webhook.default_server_name", "CS2 Server").c_str());
+	const std::string player = Limit(report.playerName.empty() ? localization::Get("webhook.unknown_player", "Unknown player") : report.playerName, 256);
+	const std::string detection = Limit(report.detection.empty() ? "UNKNOWN" : report.detection, 256);
+	const std::string evidence = Limit(
+		CompleteSentence(report.evidence.empty() ? localization::Get("webhook.default_evidence", "The detector reached its configured threshold")
+							: report.evidence),
+		4096);
+	const std::string address = ServerAddress();
+	const std::string steamId = report.steamId ? tfm::format("%llu", static_cast<unsigned long long>(report.steamId)) : "";
+
+	return tfm::format(
+		"{\"type\":\"detection\",\"version\":1,\"steamid64\":\"%s\",\"player\":\"%s\",\"detection\":\"%s\","
+		"\"evidence\":\"%s\",\"outcome\":\"%s\",\"map\":\"%s\",\"server\":\"%s\",\"server_address\":\"%s\","
+		"\"timestamp\":\"%s\",\"plugin_version\":\"%s\"}",
+		JsonEscape(steamId), JsonEscape(player), JsonEscape(detection), JsonEscape(evidence), OutcomeCode(report.outcome), JsonEscape(Limit(map, 256)),
+		JsonEscape(Limit(server, 256)), JsonEscape(Limit(address, 512)), UtcTimestamp(), JsonEscape(PLUGIN_FULL_VERSION));
 }

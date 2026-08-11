@@ -57,7 +57,7 @@ static constexpr auto SV_CHEATS_MAX_PROPAGATION_DELAY = std::chrono::seconds(30)
 
 static_function localization::Text InvalidNumber(const char *cvar)
 {
-	return localization::Format("evidence.invalid_cvar.invalid_number", "{cvar} did not return a valid finite number.", {{"cvar", cvar}});
+	return localization::Format("evidence.invalid_cvar.invalid_number", "The client returned an invalid number for {cvar}.", {{"cvar", cvar}});
 }
 
 static_function localization::Text AboveMaximum(const char *cvar, double value, const char *maximum)

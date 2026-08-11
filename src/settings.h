@@ -45,6 +45,8 @@ namespace settings
 	const char *GetPunishmentCommand();
 	const char *GetKickCommand();
 	const char *GetWebhookUrl();
+	const char *GetJsonWebhookUrl();
+	const char *GetJsonWebhookBearerToken();
 	const char *GetWebhookRoleId();
 	const char *GetWebhookServerAddress();
 	const char *GetWebhookLogoUrl();

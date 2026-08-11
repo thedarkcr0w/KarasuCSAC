@@ -15,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <utility>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -31,7 +32,9 @@ namespace
 	constexpr std::uint32_t maximumPackageSize = 32 * 1024 * 1024;
 	constexpr std::uint64_t maximumExtractedSize = 64 * 1024 * 1024;
 	constexpr std::uint32_t maximumArchiveFiles = 512;
-	constexpr const char *releaseApi = "https://api.github.com/repos/karola3vax/CS2AC/releases/latest";
+	constexpr const char *githubReleaseApi = "https://api.github.com/repos/karola3vax/CS2AC/releases/latest";
+	constexpr const char *gitlabReleaseApi = "https://gitlab.com/api/v4/projects/karola3vax-group%2Fcs2ac/releases/permalink/latest";
+	constexpr const char *gitlabPackagePrefix = "https://gitlab.com/api/v4/projects/karola3vax-group%2Fcs2ac/packages/generic/cs2ac/";
 
 #ifdef _WIN32
 	constexpr const char *platformName = "windows";
@@ -339,19 +342,27 @@ namespace
 		return path.rfind(pluginPrefix, 0) == 0 || path == "game/csgo/addons/metamod/cs2ac.vdf" || path == "game/csgo/cfg/cs2ac.cfg";
 	}
 
-	bool ExtractPackage(const std::vector<std::uint8_t> &body, const fs::path &destination)
+	bool ExtractPackage(const std::vector<std::uint8_t> &body, const fs::path &destination, std::string *failureReason = nullptr)
 	{
+		auto fail = [failureReason](std::string reason)
+		{
+			if (failureReason)
+			{
+				*failureReason = std::move(reason);
+			}
+			return false;
+		};
 		mz_zip_archive archive {};
 		if (!mz_zip_reader_init_mem(&archive, body.data(), body.size(), 0))
 		{
-			return false;
+			return fail("the ZIP container could not be opened");
 		}
 		const bool extracted = [&]()
 		{
 			const mz_uint files = mz_zip_reader_get_num_files(&archive);
 			if (!files || files > maximumArchiveFiles)
 			{
-				return false;
+				return fail("the ZIP has no files or contains too many files");
 			}
 			std::uint64_t totalSize = 0;
 			for (mz_uint index = 0; index < files; ++index)
@@ -359,16 +370,20 @@ namespace
 				mz_zip_archive_file_stat file {};
 				if (!mz_zip_reader_file_stat(&archive, index, &file))
 				{
-					return false;
+					return fail("the ZIP file table could not be read");
 				}
-				if (file.m_is_directory)
+				std::string path(file.m_filename);
+				std::replace(path.begin(), path.end(), '\\', '/');
+				// Windows ZIP writers commonly use backslashes and miniz does not
+				// always mark those directory entries as directories. Normalize them
+				// before validation and skip directory-shaped entries explicitly.
+				if (file.m_is_directory || (!path.empty() && path.back() == '/'))
 				{
 					continue;
 				}
-				const std::string_view path(file.m_filename);
 				if (!SafeArchivePath(path) || file.m_uncomp_size > maximumPackageSize || totalSize > maximumExtractedSize - file.m_uncomp_size)
 				{
-					return false;
+					return fail("the ZIP contains an unsafe or oversized path: " + path);
 				}
 				totalSize += file.m_uncomp_size;
 				std::vector<std::uint8_t> contents(static_cast<std::size_t>(file.m_uncomp_size));
@@ -376,7 +391,7 @@ namespace
 				if (!mz_zip_reader_extract_to_mem(&archive, index, contents.empty() ? &emptyFile : contents.data(), contents.size(), 0)
 					|| !WriteFileAtomically(destination / path, contents.data(), contents.size()))
 				{
-					return false;
+					return fail("a ZIP file could not be extracted or written");
 				}
 			}
 			return true;
@@ -504,7 +519,7 @@ void UpdaterService::OnGameFrame()
 	}
 }
 
-void UpdaterService::CheckRelease()
+void UpdaterService::CheckRelease(UpdateSource source)
 {
 	if (!http && (!steamContext.Init() || !(http = steamContext.SteamHTTP())))
 	{
@@ -517,18 +532,30 @@ void UpdaterService::CheckRelease()
 		return;
 	}
 	httpUnavailableWarned = false;
+	updateSource = source;
+	const char *releaseApi = source == UpdateSource::GitHub ? githubReleaseApi : gitlabReleaseApi;
 	request = http->CreateHTTPRequest(k_EHTTPMethodGET, releaseApi);
-	if (request == INVALID_HTTPREQUEST_HANDLE || !http->SetHTTPRequestHeaderValue(request, "Accept", "application/vnd.github+json")
-		|| !http->SetHTTPRequestHeaderValue(request, "X-GitHub-Api-Version", "2022-11-28")
+	if (request == INVALID_HTTPREQUEST_HANDLE || !http->SetHTTPRequestHeaderValue(request, "Accept", "application/json")
+		|| (source == UpdateSource::GitHub && !http->SetHTTPRequestHeaderValue(request, "X-GitHub-Api-Version", "2022-11-28"))
 		|| !http->SetHTTPRequestUserAgentInfo(request, "CS2AC-Updater") || !http->SetHTTPRequestNetworkActivityTimeout(request, 10)
 		|| !http->SetHTTPRequestAbsoluteTimeoutMS(request, 20000) || !http->SetHTTPRequestRequiresVerifiedCertificate(request, true))
 	{
+		if (source == UpdateSource::GitHub)
+		{
+			TryGitLab(" while checking releases.");
+			return;
+		}
 		RetryLater("The release check could not be prepared.");
 		return;
 	}
 	SteamAPICall_t call {};
 	if (!http->SendHTTPRequest(request, &call))
 	{
+		if (source == UpdateSource::GitHub)
+		{
+			TryGitLab(" while checking releases.");
+			return;
+		}
 		RetryLater("The release check could not be sent.");
 		return;
 	}
@@ -544,12 +571,22 @@ void UpdaterService::DownloadPackage()
 		|| !http->SetHTTPRequestNetworkActivityTimeout(request, 20) || !http->SetHTTPRequestAbsoluteTimeoutMS(request, 120000)
 		|| !http->SetHTTPRequestRequiresVerifiedCertificate(request, true))
 	{
+		if (updateSource == UpdateSource::GitHub)
+		{
+			TryGitLab(" while downloading the package.");
+			return;
+		}
 		RetryLater("The update download could not be prepared.");
 		return;
 	}
 	SteamAPICall_t call {};
 	if (!http->SendHTTPRequest(request, &call))
 	{
+		if (updateSource == UpdateSource::GitHub)
+		{
+			TryGitLab(" while downloading the package.");
+			return;
+		}
 		RetryLater("The update download could not be sent.");
 		return;
 	}
@@ -570,30 +607,64 @@ void UpdaterService::OnCompleted(HTTPRequestCompleted_t *result, bool failed)
 		return;
 	}
 	const RequestKind completedKind = requestKind;
+	const UpdateSource completedSource = updateSource;
 	const int status = static_cast<int>(result->m_eStatusCode);
 	std::vector<std::uint8_t> body;
 	const bool responseReady = !failed && result->m_bRequestSuccessful && status >= 200 && status <= 299
 							   && ReadResponse(body, completedKind == RequestKind::Release ? maximumReleaseResponseSize : maximumPackageSize);
+	const bool packageMetadataReady =
+		responseReady && completedKind == RequestKind::Package && completedSource == UpdateSource::GitLab ? ReadGitLabPackageMetadata() : true;
 	CancelRequest();
 	if (!responseReady)
 	{
+		if (completedSource == UpdateSource::GitHub)
+		{
+			TryGitLab(tfm::format(" with HTTP %d.", status).c_str());
+			return;
+		}
 		RetryLater(tfm::format("The automatic update request failed with HTTP %d.", status).c_str());
+		return;
+	}
+	if (!packageMetadataReady)
+	{
+		RetryLater("The GitLab package did not provide a valid checksum or size.");
 		return;
 	}
 	if (completedKind == RequestKind::Release)
 	{
-		if (!SelectRelease(body))
+		if (!SelectRelease(body, completedSource))
 		{
+			if (completedSource == UpdateSource::GitHub && releaseSelectionFailed)
+			{
+				TryGitLab(" because its release metadata was unusable.");
+				return;
+			}
 			nextCheck = std::chrono::steady_clock::now() + (releaseSelectionFailed ? retryDelay : regularCheckDelay);
 			return;
 		}
 		DownloadPackage();
 		return;
 	}
-	if (completedKind == RequestKind::Package && StagePackage(body))
+	std::string stageFailure;
+	if (completedKind == RequestKind::Package && StagePackage(body, stageFailure))
 	{
 		Msg("[CS2AC] CS2AC %s is ready. It will be installed the next time the server starts.\n", updateVersion.c_str());
 		nextCheck = std::chrono::steady_clock::now() + regularCheckDelay;
+		return;
+	}
+	if (completedSource == UpdateSource::GitHub)
+	{
+		if (!stageFailure.empty())
+		{
+			Warning("[CS2AC] GitHub update staging failed: %s Trying GitLab.\n", stageFailure.c_str());
+		}
+		TryGitLab(" because its package failed validation.");
+		return;
+	}
+	if (!stageFailure.empty())
+	{
+		const std::string reason = tfm::format("The downloaded update did not pass validation: %s.", stageFailure.c_str());
+		RetryLater(reason.c_str());
 		return;
 	}
 	RetryLater("The downloaded update did not pass validation.");
@@ -608,6 +679,13 @@ void UpdaterService::CancelRequest()
 	}
 	request = INVALID_HTTPREQUEST_HANDLE;
 	requestKind = RequestKind::None;
+}
+
+void UpdaterService::TryGitLab(const char *reason)
+{
+	CancelRequest();
+	Msg("[CS2AC] GitHub automatic updater failed%s Trying GitLab.\n", reason ? reason : ".");
+	CheckRelease(UpdateSource::GitLab);
 }
 
 void UpdaterService::RetryLater(const char *reason)
@@ -628,7 +706,46 @@ bool UpdaterService::ReadResponse(std::vector<std::uint8_t> &body, std::uint32_t
 	return http->GetHTTPResponseBodyData(request, body.data(), size);
 }
 
-bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
+bool UpdaterService::ReadGitLabPackageMetadata()
+{
+	if (!http || request == INVALID_HTTPREQUEST_HANDLE)
+	{
+		return false;
+	}
+	std::uint32_t headerSize {};
+	if (!http->GetHTTPResponseHeaderSize(request, "x-checksum-sha256", &headerSize) || headerSize == 0 || headerSize > 128)
+	{
+		return false;
+	}
+	std::vector<std::uint8_t> header(headerSize);
+	if (!http->GetHTTPResponseHeaderValue(request, "x-checksum-sha256", header.data(), headerSize))
+	{
+		return false;
+	}
+	std::string digest(reinterpret_cast<const char *>(header.data()), header.size());
+	while (!digest.empty() && (digest.back() == '\0' || std::isspace(static_cast<unsigned char>(digest.back()))))
+	{
+		digest.pop_back();
+	}
+	while (!digest.empty() && std::isspace(static_cast<unsigned char>(digest.front())))
+	{
+		digest.erase(digest.begin());
+	}
+	if (digest.size() != 64 || !std::all_of(digest.begin(), digest.end(), [](unsigned char character) { return std::isxdigit(character); }))
+	{
+		return false;
+	}
+	std::uint32_t bodySize {};
+	if (!http->GetHTTPResponseBodySize(request, &bodySize) || !bodySize || bodySize > maximumPackageSize)
+	{
+		return false;
+	}
+	expectedDigest = "sha256:" + digest;
+	expectedSize = bodySize;
+	return true;
+}
+
+bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body, UpdateSource source)
 {
 	releaseSelectionFailed = false;
 	CUtlBuffer buffer(body.data(), static_cast<int>(body.size()), CUtlBuffer::READ_ONLY);
@@ -638,15 +755,15 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
 	if (!release || !parsed)
 	{
 		releaseSelectionFailed = true;
-		Warning("[CS2AC] GitHub returned release information CS2AC could not read.\n");
+		Warning("[CS2AC] %s returned release information CS2AC could not read.\n", source == UpdateSource::GitHub ? "GitHub" : "GitLab");
 		return false;
 	}
 
 	const std::string tag = release->GetString("tag_name", "");
 	Version available;
 	Version current;
-	const bool newer = !release->GetBool("draft") && !release->GetBool("prerelease") && ParseVersion(tag, available)
-					   && ParseVersion(PLUGIN_FULL_VERSION, current) && CompareVersions(available, current) > 0;
+	const bool newer = !release->GetBool("draft") && !release->GetBool("prerelease") && !release->GetBool("upcoming_release")
+					   && ParseVersion(tag, available) && ParseVersion(PLUGIN_FULL_VERSION, current) && CompareVersions(available, current) > 0;
 	if (!newer)
 	{
 		return false;
@@ -657,6 +774,11 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
 	downloadUrl.clear();
 	expectedDigest.clear();
 	expectedSize = 0;
+	if (source == UpdateSource::GitLab)
+	{
+		downloadUrl = std::string(gitlabPackagePrefix) + tag + "/" + expectedName;
+		return true;
+	}
 	KeyValues *assets = release->FindKey("assets", false);
 	for (KeyValues *asset = assets ? assets->GetFirstSubKey() : nullptr; asset; asset = asset->GetNextKey())
 	{
@@ -681,11 +803,36 @@ bool UpdaterService::SelectRelease(const std::vector<std::uint8_t> &body)
 	return true;
 }
 
-bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body)
+bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body, std::string &failureReason)
 {
+	failureReason.clear();
+	auto fail = [&failureReason](std::string reason)
+	{
+		failureReason = std::move(reason);
+		return false;
+	};
+	auto requireFile = [&fail](const fs::path &path)
+	{
+		std::error_code error;
+		if (!fs::is_regular_file(path, error))
+		{
+			return fail("required file is missing: " + path.string());
+		}
+		return true;
+	};
+	auto requireDirectory = [&fail](const fs::path &path)
+	{
+		std::error_code error;
+		if (!fs::is_directory(path, error))
+		{
+			return fail("required directory is missing: " + path.string());
+		}
+		return true;
+	};
+
 	if (GameRoot().empty() || body.size() != expectedSize)
 	{
-		return false;
+		return fail(GameRoot().empty() ? "the game directory is unavailable" : "download size does not match the response metadata");
 	}
 	std::string actualDigest = picosha2::hash256_hex_string(body.begin(), body.end());
 	std::transform(actualDigest.begin(), actualDigest.end(), actualDigest.begin(), [](unsigned char character) { return std::tolower(character); });
@@ -693,29 +840,46 @@ bool UpdaterService::StagePackage(const std::vector<std::uint8_t> &body)
 	std::transform(wantedDigest.begin(), wantedDigest.end(), wantedDigest.begin(), [](unsigned char character) { return std::tolower(character); });
 	if (actualDigest != wantedDigest || !IsSafeVersion(updateVersion))
 	{
-		return false;
+		return fail(actualDigest != wantedDigest ? "downloaded SHA-256 does not match the response checksum" : "the update version is invalid");
 	}
 
 	const fs::path relativeStage = fs::path("addons") / "cs2ac" / "update" / updateVersion;
 	std::error_code error;
 	fs::remove_all(CsgoRoot() / relativeStage, error);
-	if (error || !ExtractPackage(body, CsgoRoot() / relativeStage))
+	if (error)
 	{
-		return false;
+		return fail("could not clear the previous staging directory: " + error.message());
+	}
+	std::string extractFailure;
+	if (!ExtractPackage(body, CsgoRoot() / relativeStage, &extractFailure))
+	{
+		return fail(extractFailure.empty() ? "archive extraction failed" : extractFailure);
 	}
 
 	const fs::path packageRoot = CsgoRoot() / relativeStage / "game" / "csgo";
 	const fs::path packageBinary = packageRoot / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac") + binaryExtension);
 	// Keep this name dot-free because Metamod treats a dotted version suffix as the binary extension.
 	const fs::path updateBinary = CsgoRoot() / "addons" / "cs2ac" / "bin" / platformFolder / (std::string("cs2ac-update") + binaryExtension);
-	if (!fs::is_regular_file(packageBinary, error) || !fs::is_regular_file(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt", error)
-		|| !fs::is_directory(packageRoot / "addons" / "cs2ac" / "translations", error)
-		|| !fs::is_directory(packageRoot / "addons" / "cs2ac" / "licenses", error)
-		|| !fs::is_regular_file(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md", error)
-		|| !fs::is_regular_file(packageRoot / "cfg" / "cs2ac.cfg", error) || !CopyFileAtomically(packageBinary, updateBinary)
-		|| !WriteTextFileAtomically(PendingMarker(), updateVersion + "\n") || !WriteVdf("cs2ac-update"))
+	if (!requireFile(packageBinary)
+		|| !requireFile(packageRoot / "addons" / "cs2ac" / "gamedata" / "cs2ac.games.txt")
+		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "translations")
+		|| !requireDirectory(packageRoot / "addons" / "cs2ac" / "licenses")
+		|| !requireFile(packageRoot / "addons" / "cs2ac" / "THIRD_PARTY_NOTICES.md")
+		|| !requireFile(packageRoot / "cfg" / "cs2ac.cfg"))
 	{
 		return false;
+	}
+	if (!CopyFileAtomically(packageBinary, updateBinary))
+	{
+		return fail("could not write the staged plugin binary; check server directory permissions");
+	}
+	if (!WriteTextFileAtomically(PendingMarker(), updateVersion + "\n"))
+	{
+		return fail("could not write the pending update marker; check server directory permissions");
+	}
+	if (!WriteVdf("cs2ac-update"))
+	{
+		return fail("could not update the Metamod VDF; check addons/metamod permissions");
 	}
 	return true;
 }

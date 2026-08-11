@@ -36,6 +36,8 @@
 
 <img src="docs/cs2ac-logo.png" width="760" alt="CS2AC">
 
+<a href="https://buymeacoffee.com/karola3vax"><img src="docs/buymeacoffee-banner.png" width="760" alt="Support continued CS2AC development"></a>
+
 ### Open-source server-side anti-cheat for Counter-Strike 2.
 
 [![Modules](https://img.shields.io/badge/modules-18-6f42c1?style=for-the-badge)](#detection-modules)
@@ -120,7 +122,7 @@ That is it. Players install nothing.
 
 The default punishment commands are made for [CS2-SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin). If your server uses another admin plugin, replace the two commands in `cs2ac.cfg` with commands that plugin understands.
 
-Upstream CS2AC checks for stable updates after startup and every six hours, and installs them on the next full server restart. **This fork compiles that updater out entirely** — a stock upstream build would overwrite the Karasu relay, the confidence table and the branding, so `cs2ac_auto_update` has no effect here and `cs2ac_status` reports automatic updates as off regardless of its value. Karasu ships plugin updates in the DatHost bundle.
+Upstream CS2AC checks for stable updates after startup and every six hours and installs them on the next full server restart, now from GitHub with the GitLab mirror as a fallback. **This fork compiles that updater out entirely** — a stock upstream build would overwrite the Karasu relay, the confidence table and the branding, so `cs2ac_auto_update` has no effect here and `cs2ac_status` reports automatic updates as off regardless of its value. Karasu ships plugin updates in the DatHost bundle.
 
 ## Detection output
 
@@ -176,7 +178,7 @@ All 18 modules are enabled by default, and each one can be turned off. Open **Ho
 <details>
 <summary><strong>How strict is it?</strong></summary>
 
-Three suspicious one-command snap movements before damaging shots, or three matching smooth aim curves, within five minutes. The enemy must be at least 100 game units away, and CS2AC checks the half-second before the shot.
+Any three suspicious one-command snaps, snap-returns, or matching smooth aim curves before damaging shots, in any combination within five minutes. The enemy must be at least 100 game units away, and CS2AC checks the half-second before the shot.
 
 </details>
 
@@ -194,7 +196,7 @@ This must happen three times within five minutes. Each time, the lock must last 
 <details>
 <summary><strong>How strict is it?</strong></summary>
 
-The previous contact with that enemy must be at least one second old, and the confirmed shot must damage that same enemy. Contact-to-damage shots in 0-1 ticks add 2 points and 2-tick shots add 1 point; reactions of 3 ticks or longer remove 2 points. Detection needs 10 points and the score cannot fall below zero. Walls, misses, held sprays, unconfirmed shots, unsafe networking, possible smoke, the R8 Revolver, and the Zeus cannot change the score.
+The previous contact with that enemy must be at least one second old, and the confirmed shot must damage that same enemy. Contact-to-damage shots in 0-1 ticks add 2 points; reactions of 2 ticks or longer remove 3 points. Detection needs 10 points and the score cannot fall below zero. Walls, misses, held sprays, unconfirmed shots, unsafe networking, possible smoke, the R8 Revolver, and the Zeus cannot change the score.
 
 </details>
 
@@ -358,6 +360,8 @@ The included [`cs2ac.cfg`](cfg/cs2ac.cfg) explains every option in plain languag
 | `cs2ac_punishment_command` | `css_addban ...` | Command submitted for permanent-ban detections. |
 | `cs2ac_kick_command` | `css_kick ...` | Command submitted for kick-only detections. |
 | `cs2ac_webhook_url` | empty | Discord webhook that receives detection reports. |
+| `cs2ac_json_webhook_url` | empty | Optional HTTPS endpoint that receives neutral JSON detection reports. |
+| `cs2ac_json_webhook_bearer_token` | empty | Optional bearer token sent to the JSON endpoint. |
 | `cs2ac_webhook_role_id` | empty | Discord role to mention on a report. |
 | `cs2ac_webhook_server_address` | automatic | Server address shown in Discord. |
 | `cs2ac_webhook_logo_url` | empty | Override the default CS2AC image shown in Discord reports. |
@@ -395,6 +399,20 @@ Keep the webhook URL private. CS2AC never prints it back to the console.
 </details>
 
 <details>
+<summary><strong>Generic JSON webhooks</strong></summary>
+
+1. Put your HTTPS endpoint in `cs2ac_json_webhook_url`.
+2. Optionally set `cs2ac_json_webhook_bearer_token` for `Authorization: Bearer ...` authentication.
+3. Run `cs2ac_reload`.
+4. Run `cs2ac_webhook_test` to send a harmless test event.
+
+CS2AC can send to Discord and the JSON endpoint at the same time. JSON reports are sent in the background, retry temporary failures once, and treat any HTTP `2xx` response as success. Responses from the endpoint are never executed as commands; punishment remains controlled locally by CS2AC.
+
+Each event contains `type`, `version`, `steamid64`, `player`, `detection`, `evidence`, `outcome`, `map`, `server`, `server_address`, `timestamp`, and `plugin_version`.
+
+</details>
+
+<details>
 <summary><strong>Server commands</strong></summary>
 
 | Command | What it does |
@@ -404,7 +422,7 @@ Keep the webhook URL private. CS2AC never prints it back to the console.
 | `cs2ac_reload` | Reload `cs2ac.cfg`. |
 | `cs2ac_check_config` | Find mistakes in the current configuration. |
 | `cs2ac_test_announcement` | Preview the chat and center-screen alert without detecting anyone. |
-| `cs2ac_webhook_test` | Send a test detection report to Discord. |
+| `cs2ac_webhook_test` | Send a test detection report to each configured webhook. |
 
 </details>
 
@@ -457,7 +475,7 @@ Yes. When `mp_teammates_are_enemies` is enabled, CS2AC treats other players as e
 <details>
 <summary><strong>Does CS2AC advertise itself?</strong></summary>
 
-Yes. Five seconds after a player fully joins, CS2AC privately shows this message to that player in chat and at the center of their screen. The center message stays for three seconds, and no one else sees it:
+Yes. Ten seconds after a player fully joins, CS2AC privately shows this message to that player in chat and at the center of their screen. The center message stays for three seconds, and no one else sees it:
 
 ```text
 [CS2AC] This server is protected by karola3vax's anti-cheat.
@@ -500,6 +518,12 @@ Both scripts make a directly installable package under the build folder's `packa
 Run CS2AC on a real server. Test it, [send reproducible reports](https://github.com/karola3vax/CS2AC/issues), and include the detector evidence whenever something looks wrong.
 
 If CS2AC earns a place on your server, star the repository and share your clips. That helps more server owners find it and gives the project better real-world feedback.
+
+## Support development
+
+Support continued CS2AC development: [buymeacoffee.com/karola3vax](https://buymeacoffee.com/karola3vax).
+
+CS2AC is free and independently maintained. Even a small one-time or monthly contribution helps me keep up with CS2 updates, testing, Windows and Linux builds, report investigation, and community support.
 
 ## License
 

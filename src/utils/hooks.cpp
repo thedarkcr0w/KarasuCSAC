@@ -102,6 +102,10 @@ namespace
 		{
 			g_CS2AC.OnFireBullets(*data->ToPB<CMsgTEFireBullets>());
 		}
+		else if (info->m_MessageId == GE_PlayerBulletHitId)
+		{
+			g_CS2AC.OnPlayerBulletHit(*data->ToPB<CMsgPlayerBulletHit>());
+		}
 		RETURN_META(MRES_IGNORED);
 	}
 
