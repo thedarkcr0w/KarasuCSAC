@@ -36,14 +36,11 @@
 
 <img src="docs/cs2ac-logo.png" width="760" alt="CS2AC">
 
-<a href="https://buymeacoffee.com/karola3vax"><img src="docs/buymeacoffee-banner.png" width="760" alt="Support continued CS2AC development"></a>
-
 ### Open-source server-side anti-cheat for Counter-Strike 2.
 
 [![Modules](https://img.shields.io/badge/modules-18-6f42c1?style=for-the-badge)](#detection-modules)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-5c7cfa?style=for-the-badge)](#quickstart)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-2ea44f?style=for-the-badge)](LICENSE)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/karola3vax)
 
 **A good Counter-Strike match should be decided by the players, not by who brought the better cheat.**
 
@@ -518,12 +515,6 @@ Both scripts make a directly installable package under the build folder's `packa
 Run CS2AC on a real server. Test it, [send reproducible reports](https://github.com/karola3vax/CS2AC/issues), and include the detector evidence whenever something looks wrong.
 
 If CS2AC earns a place on your server, star the repository and share your clips. That helps more server owners find it and gives the project better real-world feedback.
-
-## Support development
-
-Support continued CS2AC development: [buymeacoffee.com/karola3vax](https://buymeacoffee.com/karola3vax).
-
-CS2AC is free and independently maintained. Even a small one-time or monthly contribution helps me keep up with CS2 updates, testing, Windows and Linux builds, report investigation, and community support.
 
 ## License
 

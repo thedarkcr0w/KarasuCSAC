@@ -457,9 +457,12 @@ void utils::AnnounceWatermarkTo(CPlayerSlot slot, bool centerOnly)
 				ClientPrintFilter(&filter, HUD_PRINTTALK, colored, param, "", "", "");
 			}
 		};
+		// Upstream also prints its donation link to every player here. Karasu
+		// players are ours, on our servers, so we do not put someone else's
+		// funding appeal in front of them. The watermark above still names the
+		// author, and the AGPL licence texts ship untouched in
+		// addons/cs2ac/licenses/ - attribution stays, the solicitation goes.
 		printChat(localization::Watermark({{"author", "{grey}%s1{default}"}}).localized, "karola3vax");
-		printChat(localization::Format("announcement.support", "Support development: {blue}{url}{default}", {{"url", "buymeacoffee.com/karola3vax"}})
-					  .localized);
 		return;
 	}
 

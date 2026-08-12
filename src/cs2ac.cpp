@@ -557,7 +557,6 @@ bool CS2ACPlugin::Activate(char *error, size_t maxlen, bool late)
 		hooks::HookActivePlayers();
 	}
 	Msg("[CS2AC] CS2AC %s loaded successfully. Waiting for cs2ac.cfg to finish.\n", PLUGIN_FULL_VERSION);
-	Msg("[CS2AC] Support development: buymeacoffee.com/karola3vax\n");
 	return true;
 }
 
@@ -1366,7 +1365,6 @@ void CS2ACPlugin::PrintStatus() const
 	Msg("[CS2AC] JSON webhook: %s.\n",
 		webhook && webhook->IsJsonConfigured() ? (webhook->IsJsonDisabled() ? "disabled after an error" : "configured") : "not configured");
 	Msg("[CS2AC] sv_cheats testing: %s.\n", MovementDetectionService::IsSvCheatsTestingAllowed() ? "allowed" : "not allowed");
-	Msg("[CS2AC] Support development: buymeacoffee.com/karola3vax\n");
 }
 
 void CS2ACPlugin::ResetRuntime()
